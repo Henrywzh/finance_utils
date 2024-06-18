@@ -190,25 +190,28 @@ def stochastic_oscillator(
 
 def mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14) -> pd.DataFrame:  # money flow index
     """
-    :param df_raw: must be raw dataframe consisting both price and volume
+    :param df_raw: dataframe
     :param period: 14 as default
     :param ticker_name:
     :return: dataframe
     """
 
     if period <= 0: raise ValueError('Fast must be greater than 0')
+    if 'Ticker' in df_raw:
+        price_df = df_raw.pivot(index="Date", columns="Ticker", values="Close")
+        volume_df = df_raw.pivot(index="Date", columns="Ticker", values="Volume")
+        high_df = df_raw.pivot(index="Date", columns="Ticker", values="High")
+        low_df = df_raw.pivot(index="Date", columns="Ticker", values="Low")
+        _df = pd.DataFrame(price_df[ticker_name])
+        _df['High'] = high_df[ticker_name]
+        _df['Low'] = low_df[ticker_name]
+        _df['Volume'] = volume_df[ticker_name]
+    elif ('Close' in df_raw) and ('Volume' in df_raw) and ('High' in df_raw) and ('Low' in df_raw):
+        _df = df_raw.copy()
+    else:
+        raise Exception('Dataframe is not in the correct format')
 
-    price_df = df_raw.pivot(index="Date", columns="Ticker", values="Close")
-    volume_df = df_raw.pivot(index="Date", columns="Ticker", values="Volume")
-    high_df = df_raw.pivot(index="Date", columns="Ticker", values="High")
-    low_df = df_raw.pivot(index="Date", columns="Ticker", values="Low")
-
-    _df = pd.DataFrame(price_df[ticker_name])
-    _df['High'] = high_df[ticker_name]
-    _df['Low'] = low_df[ticker_name]
-    _df['Volume'] = volume_df[ticker_name]
     _df['Typical Price'] = (_df['High'] + _df[ticker_name] + _df['Low']) / 3
-
     _df['+ Money Flow'] = np.where(_df['Typical Price'].diff() > 0, _df['Typical Price'] * _df['Volume'], 0)
     _df['- Money Flow'] = np.where(_df['Typical Price'].diff() < 0, -_df['Typical Price'] * _df['Volume'], 0)
     _df['Period + Money Flow'] = _df['+ Money Flow'].rolling(period).sum()
