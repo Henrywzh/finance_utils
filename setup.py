@@ -1,14 +1,15 @@
-from setuptools import setup
-
-from utils.strategies import __version__
+from setuptools import setup, find_packages
 
 setup(
     name='strategies',
-    version=__version__,
+    version='1.0',
 
     url='https://github.com/Henrywzh/finance_utils',
     author='Henry Wu',
     author_email='hernywzh88@gmail.com',
 
-    py_modules=['strategies'],
+    install_requires=[
+        'numpy', 'pandas', 'matplotlib', 'seaborn'
+    ],
+    packages=find_packages()
 )

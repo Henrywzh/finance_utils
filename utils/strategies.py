@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 
-__version__ = 'dev'
-
 def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
     # _df contains the Close of a stock
     if fast < 0: raise ValueError('Fast must be greater than 0')

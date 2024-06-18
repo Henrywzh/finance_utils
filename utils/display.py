@@ -1,6 +1,5 @@
+from matplotlib import pyplot as plt
 from strategies import *
-
-__version__ = 'dev'
 
 def plot_macd(df_prev: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9, ticker_name: str = None):
     _df = macd(df_prev, fast, slow, signal, ticker_name=ticker_name)
