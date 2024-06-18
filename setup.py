@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='strategies',
+    name='utilities',
     version='0.1',
 
     url='https://github.com/Henrywzh/finance_utils',
