@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: strategies
+Version: 1.0
+Home-page: https://github.com/Henrywzh/finance_utils
+Author: Henry Wu
+Author-email: hernywzh88@gmail.com
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: matplotlib
+Requires-Dist: seaborn
