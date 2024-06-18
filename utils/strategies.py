@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
+__version__ = 'dev'
 
-def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None):
+def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
     # _df contains the Close of a stock
     if fast < 0: raise ValueError('Fast must be greater than 0')
     if slow < 0: raise ValueError('Slow must be greater than 0')
@@ -33,7 +33,7 @@ def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = No
 
 
 # need to redo the ema functions
-def ema_fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None):
+def ema_fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
     if fast < 0: raise ValueError('Fast must be greater than 0')
     if slow < 0: raise ValueError('Slow must be greater than 0')
     if fast > slow:
@@ -59,7 +59,7 @@ def ema_fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str 
     return _df
 
 
-def buy_and_hold(df_prev: pd.DataFrame, ticker_name: str = None):
+def buy_and_hold(df_prev: pd.DataFrame, ticker_name: str = None) -> pd.DataFrame:
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
@@ -70,7 +70,7 @@ def buy_and_hold(df_prev: pd.DataFrame, ticker_name: str = None):
     return _df
 
 
-def bollinger_bands(df_prev: pd.DataFrame, period: int, step: float, ticker_name: str = None):
+def bollinger_bands(df_prev: pd.DataFrame, period: int, step: float, ticker_name: str = None) -> pd.DataFrame:
     if period < 1: raise ValueError('Period must be >= 1')
     if step <= 0: raise ValueError('Step must be > 0')
 
@@ -84,7 +84,7 @@ def bollinger_bands(df_prev: pd.DataFrame, period: int, step: float, ticker_name
 
 
 # default period: 14
-def rsi(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None):
+def rsi(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None) -> pd.DataFrame:
     if period < 1: raise ValueError('Period must be >= 1')
     if ticker_name is None:
         ticker_name = 'Close'
@@ -114,7 +114,7 @@ def rsi(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None):
     return _df
 
 
-def rsi_2(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None):
+def rsi_2(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None) -> pd.DataFrame:
     if period < 1: raise ValueError('Period must be >= 1')
     if ticker_name is None:
         ticker_name = 'Close'
@@ -133,7 +133,13 @@ def rsi_2(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None):
     return _df
 
 
-def macd(df_prev: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9, ticker_name: str = None):
+def macd(
+        df_prev: pd.DataFrame,
+        fast: int = 12,
+        slow: int = 26,
+        signal: int = 9,
+        ticker_name: str = None
+) -> pd.DataFrame:
     if fast < 0: raise ValueError('Fast must be greater than 0')
     if slow < 0: raise ValueError('Slow must be greater than 0')
     if signal < 0: raise ValueError('Signal must be greater than 0')
@@ -153,7 +159,12 @@ def macd(df_prev: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9,
     return _df
 
 
-def stochastic_oscillator(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None, type: str = 'fast'):
+def stochastic_oscillator(
+        df_prev: pd.DataFrame,
+        period: int = 14,
+        ticker_name: str = None,
+        type: str = 'fast'
+) -> pd.DataFrame:
     if period <= 0: raise ValueError('Fast must be greater than 0')
     if ticker_name is None:
         ticker_name = 'Close'
@@ -179,7 +190,7 @@ def stochastic_oscillator(df_prev: pd.DataFrame, period: int = 14, ticker_name: 
     return _df
 
 
-def mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14):  # money flow index
+def mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14) -> pd.DataFrame:  # money flow index
     """
     :param df_raw: must be raw dataframe consisting both price and volume
     :param period: 14 as default
