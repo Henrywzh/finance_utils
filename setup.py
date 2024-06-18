@@ -11,15 +11,28 @@ setup(
     install_requires=[
         'numpy', 'pandas', 'matplotlib', 'seaborn'
     ],
-    packages=find_packages()
+    packages=['finance_utils'],
+
+    license='IC',
+    description='My first python package',
+    long_description=open('README.md').read()
 )
 
-setup(name='py_qbee_tst',
+"""
+    # Needed to silence warnings (and to be a worthwhile package)
+    name='Measurements',
+    url='https://github.com/jladan/package_demo',
+    author='John Ladan',
+    author_email='jladan@uwaterloo.ca',
+    # Needed to actually package something
+    packages=['measure'],
+    # Needed for dependencies
+    install_requires=['numpy'],
+    # *strongly* suggested for sharing
     version='0.1',
-    description='test package to run on qbee.io',
-    author='qbee AS',
-    author_email='author@somemail.com',
+    # The license can be anything you like
     license='MIT',
-    packages=['py_qbee_tst'],
-    scripts=['bin/qbee_tst.py'],
-    zip_safe=False)
+    description='An example of a python package from pre-existing code',
+    # We will also need a readme eventually (there will be a warning)
+    # long_description=open('README.txt').read(),
+"""
