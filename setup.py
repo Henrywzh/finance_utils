@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='strategies',
-    version='1.0',
+    version='0.1',
 
     url='https://github.com/Henrywzh/finance_utils',
     author='Henry Wu',
