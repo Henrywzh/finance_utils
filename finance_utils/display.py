@@ -1,7 +1,12 @@
 from matplotlib import pyplot as plt
+
 from finance_utils.strategies import *
 
+
 def plot_macd(df_prev: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9, ticker_name: str = None):
+    if ticker_name is None:
+        ticker_name = 'Close'
+
     _df = macd(df_prev, fast, slow, signal, ticker_name=ticker_name)
 
     plt.figure(figsize=(12, 6))

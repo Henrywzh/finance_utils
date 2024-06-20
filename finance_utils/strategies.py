@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
     # _df contains the Close of a stock
     if fast < 0: raise ValueError('Fast must be greater than 0')
@@ -12,6 +13,7 @@ def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = No
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     _df[f'MA{fast}'] = _df[ticker_name].rolling(fast).mean()
     _df[f'MA{slow}'] = _df[ticker_name].rolling(slow).mean()
@@ -41,6 +43,7 @@ def ema_fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str 
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     _df[f'EMA{fast}'] = _df[ticker_name].ewm(span=fast, adjust=False).mean()
     _df[f'EMA{slow}'] = _df[ticker_name].ewm(span=slow, adjust=False).mean()
@@ -61,6 +64,7 @@ def buy_and_hold(df_prev: pd.DataFrame, ticker_name: str = None) -> pd.DataFrame
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     _df['Strategy Return'] = _df[ticker_name].pct_change()
     _df['Cumulative Return'] = (1 + _df['Strategy Return']).cumprod()
@@ -75,6 +79,7 @@ def bollinger_bands(df_prev: pd.DataFrame, period: int, step: float, ticker_name
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     _df[f'MA{period}'] = _df[ticker_name].rolling(period).mean()
     _df['Upper Band'] = _df[f'MA{period}'] + step * _df[f'MA{period}'].rolling(period).std()
@@ -87,6 +92,7 @@ def rsi(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None) -> pd.
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     """
     RSI is more useful in trending market
@@ -117,6 +123,7 @@ def rsi_2(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None) -> p
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     _df['Diff'] = _df[ticker_name].diff()
     _df['Gain'] = np.where(_df['Diff'] > 0, _df['Diff'], 0)
@@ -148,6 +155,7 @@ def macd(
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     _df[f'EMA{fast}'] = _df[ticker_name].ewm(span=fast, adjust=False).mean()
     _df[f'EMA{slow}'] = _df[ticker_name].ewm(span=slow, adjust=False).mean()
@@ -167,6 +175,7 @@ def stochastic_oscillator(
     if ticker_name is None:
         ticker_name = 'Close'
     _df = pd.DataFrame(df_prev[ticker_name])
+    _df.dropna(inplace=True)
 
     """
     Assumption of the indicator: 
@@ -203,6 +212,7 @@ def mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14) -> pd.DataFram
         high_df = df_raw.pivot(index="Date", columns="Ticker", values="High")
         low_df = df_raw.pivot(index="Date", columns="Ticker", values="Low")
         _df = pd.DataFrame(price_df[ticker_name])
+
         _df['High'] = high_df[ticker_name]
         _df['Low'] = low_df[ticker_name]
         _df['Volume'] = volume_df[ticker_name]
@@ -210,6 +220,8 @@ def mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14) -> pd.DataFram
         _df = df_raw.copy()
     else:
         raise Exception('Dataframe is not in the correct format')
+
+    _df.dropna(inplace=True)
 
     _df['Typical Price'] = (_df['High'] + _df[ticker_name] + _df['Low']) / 3
     _df['+ Money Flow'] = np.where(_df['Typical Price'].diff() > 0, _df['Typical Price'] * _df['Volume'], 0)
@@ -222,3 +234,71 @@ def mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14) -> pd.DataFram
 
     return _df
 
+
+# close.rolling(length).mean()
+def smma(src, length):
+    smma_values = np.zeros_like(src)
+    smma_values[length - 1] = np.mean(src[:length])
+    for i in range(length, len(src)):
+        smma_values[i] = (smma_values[i - 1] * (length - 1) + src[i]) / length
+    return smma_values
+
+
+def zlema(src, length):
+    ema1 = src.ewm(span=length, adjust=False).mean()
+    ema2 = ema1.ewm(span=length, adjust=False).mean()
+    d = ema1 - ema2
+    zlema_values = ema1 + d
+    return zlema_values
+
+
+def imacd_lazybear(df, lengthMA=34, lengthSignal=9):
+    df['hlc3'] = (df['High'] + df['Low'] + df['Close']) / 3
+    df['hi'] = smma(df['High'].values, lengthMA)
+    df['lo'] = smma(df['Low'].values, lengthMA)
+    df['mi'] = zlema(df['hlc3'], lengthMA)
+
+    def calc_md(row):
+        if row['mi'] > row['hi']:
+            return row['mi'] - row['hi']
+        elif row['mi'] < row['lo']:
+            return row['mi'] - row['lo']
+        else:
+            return 0
+
+    df['md'] = df.apply(calc_md, axis=1)
+    df['sb'] = df['md'].rolling(window=lengthSignal).mean()
+    df['sh'] = df['md'] - df['sb']
+
+    return df
+
+
+def imacd(df_prev: pd.DataFrame, period: int = 34, signal: int = 9):
+    """
+    df_prev: contains high low close
+    """
+    if 'High' not in df_prev or 'Low' not in df_prev or 'Close' not in df_prev:
+        raise ValueError('High / Low / Close not found')
+    if period <= 0: raise ValueError('Period must be greater than 0')
+    if signal <= 0: raise ValueError('Period must be greater than 0')
+
+    _df = df_prev.copy()
+
+    _df['Typical Price'] = (_df['High'] + _df['Low'] + _df['Close']) / 3
+    _df[f'High MA{period}'] = _df['High'].rolling(period).mean()
+    _df[f'Low MA{period}'] = _df['Low'].rolling(period).mean()
+    _df[f'Typical Price ZLEMA{period}'] = zlema(_df['Typical Price'], period)
+
+    def calc_md(row):
+        if row[f'Typical Price ZLEMA{period}'] > row[f'High MA{period}']:
+            return row[f'Typical Price ZLEMA{period}'] - row[f'High MA{period}']
+        elif row[f'Typical Price ZLEMA{period}'] < row[f'Low MA{period}']:
+            return row[f'Typical Price ZLEMA{period}'] - row[f'Low MA{period}']
+        else:
+            return 0
+
+    _df['md'] = _df.apply(calc_md, axis=1)
+    _df['sb'] = _df['md'].rolling(signal).mean()
+    _df['sh'] = _df['md'] - _df['sb']
+
+    return _df
