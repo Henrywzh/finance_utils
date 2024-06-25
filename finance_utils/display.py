@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 
-from finance_utils.strategies import *
+from finance_utils.indicators import *
 
 
 def plot_macd(df_prev: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9, ticker_name: str = None):
