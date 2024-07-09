@@ -1,12 +1,13 @@
 from matplotlib import pyplot as plt
 
-from finance_utils.indicators import *
+from .indicators import *
+
+
+def plot(data, indicator):
+    pass
 
 
 def plot_macd(df_prev: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9, ticker_name: str = None):
-    if ticker_name is None:
-        ticker_name = 'Close'
-
     _df = macd(df_prev, fast, slow, signal, ticker_name=ticker_name)
 
     plt.figure(figsize=(12, 6))
@@ -44,21 +45,6 @@ def plot_oscillator(df_prev: pd.DataFrame, period: int = 14, type: str = 'fast',
     plt.legend()
     plt.show()
 
-
-def plot_mfi(df_raw: pd.DataFrame, ticker_name: str, period: int = 14):
-    _df = mfi(df_raw, ticker_name, period)
-
-    plt.figure(figsize=(12, 6))
-    x = pd.to_datetime(_df.index.values)
-
-    plt.subplot(2, 1, 1)
-    plt.plot(x, _df[ticker_name], label=ticker_name)
-    plt.legend()
-
-    plt.subplot(2, 1, 2)
-    plt.plot(x, _df['Money Flow Index'], label='Money Flow Index')
-    plt.legend()
-    plt.show()
 
 #
 # class Display:

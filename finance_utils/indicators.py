@@ -2,19 +2,13 @@ import numpy as np
 import pandas as pd
 
 
-def bollinger_bands(df_prev: pd.DataFrame, period: int, step: float = 1, ticker_name: str = None) -> pd.DataFrame:
+def bollinger_bands(data, period: int, step: float = 1, ticker_name: str = None) -> pd.DataFrame:
     if period < 1: raise ValueError('Period must be >= 1')
     if step <= 0: raise ValueError('Step must be > 0')
+    if ticker_name is None: ticker_name = 'Close'
 
-    if ticker_name is None:
-        ticker_name = 'Close'
-
-    if isinstance(df_prev.columns, pd.MultiIndex): # ('Close', Ticker)
-        ticker_name = ('Close', ticker_name)
-
-    _df = pd.DataFrame()
-    _df['Close'] = df_prev[ticker_name]
-    _df.dropna(inplace=True)
+    dictionary = {ticker_name: data}
+    _df = pd.DataFrame(data=dictionary)
 
     _df[f'MA{period}'] = _df[ticker_name].rolling(period).mean()
     _df['Upper Band'] = _df[f'MA{period}'] + step * _df[f'MA{period}'].rolling(period).std()
@@ -24,21 +18,18 @@ def bollinger_bands(df_prev: pd.DataFrame, period: int, step: float = 1, ticker_
 
 
 # default period: 14
-def rsi(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None) -> pd.DataFrame:
+def rsi(data, period: int = 14, ticker_name: str = None) -> pd.DataFrame:
     if period < 1: raise ValueError('Period must be >= 1')
-    if ticker_name is None:
-        ticker_name = 'Close'
-
-    if isinstance(df_prev.columns, pd.MultiIndex): # ('Close', Ticker)
-        ticker_name = ('Close', ticker_name)
-
-    _df = pd.DataFrame()
-    _df['Close'] = df_prev[ticker_name]
-    _df.dropna(inplace=True)
+    if ticker_name is None: ticker_name = 'Close'
 
     """
     RSI is more useful in trending market
     """
+
+    if isinstance(data, list):
+        data = {ticker_name: data}
+
+    _df = pd.DataFrame(data)
 
     _df['Diff'] = _df[ticker_name].diff()
     _df['Gain'] = np.where(_df['Diff'] > 0, _df['Diff'], 0)
@@ -61,7 +52,7 @@ def rsi(df_prev: pd.DataFrame, period: int = 14, ticker_name: str = None) -> pd.
 
 
 def macd(
-        df_prev: pd.DataFrame,
+        data,
         fast: int = 12,
         slow: int = 26,
         signal: int = 9,
@@ -70,19 +61,16 @@ def macd(
     if fast < 0: raise ValueError('Fast must be greater than 0')
     if slow < 0: raise ValueError('Slow must be greater than 0')
     if signal < 0: raise ValueError('Signal must be greater than 0')
+    if ticker_name is None: ticker_name = 'Close'
     if fast > slow:
         temp = fast
         fast = slow
         slow = temp
-    if ticker_name is None:
-        ticker_name = 'Close'
 
-    if isinstance(df_prev.columns, pd.MultiIndex): # ('Close', Ticker)
-        ticker_name = ('Close', ticker_name)
+    if isinstance(data, list):
+        data = {ticker_name: data}
 
-    _df = pd.DataFrame()
-    _df['Close'] = df_prev[ticker_name]
-    _df.dropna(inplace=True)
+    _df = pd.DataFrame(data)
 
     _df[f'EMA{fast}'] = _df[ticker_name].ewm(span=fast, adjust=False).mean()
     _df[f'EMA{slow}'] = _df[ticker_name].ewm(span=slow, adjust=False).mean()
@@ -93,21 +81,13 @@ def macd(
 
 
 def stochastic_oscillator(
-        df_prev: pd.DataFrame,
+        data,
         period: int = 14,
         ticker_name: str = None,
         type: str = 'fast'
 ) -> pd.DataFrame:
     if period <= 0: raise ValueError('Fast must be greater than 0')
-    if ticker_name is None:
-        ticker_name = 'Close'
-
-    if isinstance(df_prev.columns, pd.MultiIndex): # ('Close', Ticker)
-        ticker_name = ('Close', ticker_name)
-
-    _df = pd.DataFrame()
-    _df['Close'] = df_prev[ticker_name]
-    _df.dropna(inplace=True)
+    if ticker_name is None: ticker_name = 'Close'
 
     """
     Assumption of the indicator: 
@@ -118,6 +98,11 @@ def stochastic_oscillator(
     K: Fast 
     D: Slow
     """
+
+    if isinstance(data, list):
+        data = {ticker_name: data}
+
+    _df = pd.DataFrame(data)
 
     _df[f'L{period}'] = _df[ticker_name].rolling(period).min()
     _df[f'H{period}'] = _df[ticker_name].rolling(period).max()
