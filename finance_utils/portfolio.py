@@ -5,7 +5,7 @@ import yfinance as yf
 """
 
 class Data:
-- olhcv for every tickers and benchmark (ORIGINAL DATA)
+- ohlcv for every tickers and benchmark (ORIGINAL DATA)
 - returns, prices for every tickers
 - results for every tickers
 
@@ -55,3 +55,4 @@ if __name__ == '__main__':
     df = yf.download(tickers=['AAPL', 'MSFT', 'AMZN', 'SPY'], start='2020-01-01')
     p = Portfolio(df, 'SPY')
     print(df)
+

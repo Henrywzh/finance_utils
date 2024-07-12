@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 
-
 # ---- Functions ----
 """
 functions for all of below:
@@ -18,7 +17,11 @@ rolling: [downside beta, upside beta, beta, alpha, ***
           
 single: rolling + 
         [peak, drawdown, avg drawdown, max drawdown, calmar ratio, sterling ratio, 
-        annualised returns(geo + ari)]
+        annualised returns(geo + ari),
+        exposure time, max/avg drawdown duration, win rate, 
+        best/worst/avg trade %, max/avg trade duration,
+        profit factor, expectancy, SQN
+        ]
         
         
 REMINDER:
@@ -99,6 +102,7 @@ def get_sortino_ratio(returns: pd.Series, r_f, threshold=0):
     down_vol = sum([max(r_i - threshold, 0) ** 2 for r_i in returns]) / (n - 1)
     annual_r_p = get_annual_return(returns) - r_f
     return annual_r_p / np.sqrt(down_vol)
+
 
 def get_VaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) -> float:
     returns = returns.dropna()
