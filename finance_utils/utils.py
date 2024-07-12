@@ -15,6 +15,9 @@ rolling: [downside beta, upside beta, beta, alpha, ***
           var95, var99, cvar95, cvar99, -> require returns ***
           annualised returns(geo + ari)]
           
+          ---- IMPORTANT ----
+          For rolling data, just input the data with restricted range
+          
 single: rolling + 
         [peak, drawdown, avg drawdown, max drawdown, calmar ratio, sterling ratio, 
         annualised returns(geo + ari),
