@@ -1,20 +1,137 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-import yfinance as yf
 
 
-def get_price(tickers, start_date, end_date):  # get adj close
-    df = yf.download(tickers, start=start_date, end=end_date)
-    # if no. of tickers > 1, then df have multi-index columns
-    if isinstance(tickers, list):
-        price = df['Adj Close']
-        price.columns = tickers
-        df = price
+# ---- Functions ----
+"""
+functions for all of below:
 
-    return df
+rolling: [downside beta, upside beta, beta, alpha, ***
+          downside volatility, upside volatility, volatility skewness = upside var / downside var, 
+          returns skewness & kurtosis, -> just use skew() & kurt()
+          volatility, returns, prices, ***
+          sharpe ratio, **
+          sortino ratio, **
+          var95, var99, cvar95, cvar99, -> require returns ***
+          annualised returns(geo + ari)]
+          
+single: rolling + 
+        [peak, drawdown, avg drawdown, max drawdown, calmar ratio, sterling ratio, 
+        annualised returns(geo + ari)]
+        
+        
+REMINDER:
+- downside volatility = np.sqrt(sum(max(r_i - r_f, 0)**2 / (n - 1))
+- sortino ratio = (r_i - r_f) / downside volatility
+"""
 
 
+# assumes we have a dataframe of returns:
+def get_alpha_beta(returns: pd.DataFrame, ticker: str, benchmark: str) -> (float, float, float):
+    beta, alpha, r, _, _ = stats.linregress(returns[ticker], returns[benchmark])
+    return alpha, beta, r
+
+
+def get_downside_returns(returns: pd.Series, threshold=0) -> pd.Series:
+    return returns[returns < threshold]
+
+
+def get_upside_returns(returns: pd.Series, threshold=0) -> pd.Series:
+    return returns[returns > threshold]
+
+
+# ---- return type: single value ----
+def get_volatility(returns: pd.Series):
+    if returns.abs().max() < 1:
+        temp_df = returns * 100
+    else:
+        temp_df = returns.copy()
+
+    return temp_df.var()
+
+
+def get_risk(returns: pd.Series):
+    return np.sqrt(get_volatility(returns))
+
+
+def get_annual_return(returns: pd.Series):
+    """
+    :param returns:
+    :return: gives out the compound annual return
+
+    if want calendar year performance, input returns with data constrained only within the year
+    """
+    days = returns.shape[0]
+    returns = percent_to_num(returns)
+    # dates?
+    # assumes daily
+
+    return (np.cumprod(1 + returns) - 1) ** (365 / days)
+
+
+def get_sharpe_ratio(returns: pd.Series, r_f):  # should allow any iterable
+    """
+    :param returns: the asset returns
+    :param r_f: risk-free rate, can be an iterable or a number
+
+
+    NOT
+    DONE
+    YET
+    TODO: (r_i - r_f) / sigma(r_i - r_f)
+    """
+    r_p: pd.Series = returns
+
+    std_r_p = get_risk(r_p)
+    annual_r_p = get_annual_return(r_p)
+    return annual_r_p / std_r_p
+
+
+def get_sortino_ratio(returns: pd.Series, r_f, threshold=0):
+    """
+    NOT
+    DONE
+    YET
+    TODO: threshold? risk-free rate?
+    """
+    n = returns.shape[0]
+    down_vol = sum([max(r_i - threshold, 0) ** 2 for r_i in returns]) / (n - 1)
+    annual_r_p = get_annual_return(returns) - r_f
+    return annual_r_p / np.sqrt(down_vol)
+
+def get_VaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) -> float:
+    returns = returns.dropna()
+    if lookback_days is None:
+        lookback_days = returns.shape[0]
+
+    returns = returns.iloc[-lookback_days:]
+    return np.percentile(returns, 100 * (1 - alpha))
+
+
+def get_CVaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) -> float:
+    returns = returns.dropna()
+    if lookback_days is None:
+        lookback_days = returns.shape[0]
+
+    var_alpha = get_VaR(returns, alpha, lookback_days)
+
+    return np.nanmean(returns[returns < var_alpha])
+
+
+# ---- formats ----
+def percent_to_num(returns):  # converts returns to num
+    if max(abs(returns)) < 1:
+        return returns
+    else:
+        return returns / 100
+
+
+def num_to_percent(returns):
+    return 100 * percent_to_num(returns)
+
+
+# ---- stats ----
 def mean(x):
     return x.mean()
 
@@ -33,5 +150,3 @@ def skew(x):
 
 def kert(x):
     return stats.kurtosis(x)
-
-
