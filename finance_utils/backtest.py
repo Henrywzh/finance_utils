@@ -1,6 +1,7 @@
 from utils import *
 import yfinance as yf
 
+
 class Backtest:
     def __init__(self, data: pd.DataFrame, start_date, end_date, benchmark: str = 'SPY', r_f=None):
         """
@@ -8,6 +9,9 @@ class Backtest:
         :param start_date:
         :param end_date:
         """
+
+        # TODO: Buy & Hold Return?
+
         if 'Value' not in data.columns or 'Return' not in data.columns:
             raise ValueError('data columns should contain: Value, Return')
 
