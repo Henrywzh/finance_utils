@@ -1,23 +1,4 @@
-from datetime import datetime
-
-import pandas as pd
-import yfinance as yf
 from utils import *
-
-
-# class Data:
-#
-#
-# class Results(Data):
-#     def __init__(self, df: pd):
-#         self.df = df
-#
-#
-# class RawData(Data):
-#     def __init__(self, df: pd):
-#         self.df = df
-#
-#
 
 
 class Backtest:
@@ -30,17 +11,35 @@ class Backtest:
         if 'Value' not in data.columns or 'Return' not in data.columns:
             raise ValueError('data columns should contain: Value, Return')
 
+        if start_date > end_date:
+            raise ValueError('start_date should be less than end_date')
+
+        if start_date is None or start_date < data.index[0]:
+            start_date = data.index[0]
+
+        if end_date is None or end_date > data.index[-1]:
+            end_date = data.index[-1]
+
         self.df = data  # assumes results initially contains the returns & Value
         self.start_date = start_date
         self.end_date = end_date
         self.results = dict()  # contains all the single result values, eg max drawdown...
 
+        self.run()
+
     # ---- The main function ----
-    def run(self):  # run the backtest
+    def run(self) -> None:  # run the backtest
         pass
 
-    def get_results(self):  # get results after run
+    def get_results(self) -> dict:  # get results after run
         return self.results
+
+    def get_df(self) -> pd.DataFrame:
+        return self.df
+
+    def plot(self):
+        pass
+        # TODO: Plot the backtest result
 
     # ---- Single value functions ----
     def initial_value(self) -> float:
@@ -52,38 +51,43 @@ class Backtest:
     def final_value(self) -> float:
         return self.df['Value'].last()
 
-    def max_drawdown(self):  # some issues with signs
+    def max_drawdown(self) -> float:  # some issues with signs
         return -(self.df['Drawdown']).min()
 
-    def avg_drawdown(self):  # some issues with signs
-        return -(self.df['Drawdown'][df['Drawdown'] < 0]).mean()
+    def avg_drawdown(self) -> float:  # some issues with signs
+        return -(self.df['Drawdown'][self.df['Drawdown'] < 0]).mean()
 
-    def calmar_ratio(self):
+    def calmar_ratio(self) -> float:
         annualised_return = get_annual_return(self.df['Return'])
-        return
+        max_drawdown = self.max_drawdown()
+        return annualised_return / max_drawdown
+
+    def sterling_ratio(self) -> float:
+        annualised_return = get_annual_return(self.df['Return'])
+        avg_drawdown = self.avg_drawdown()
+        return annualised_return / avg_drawdown
+
+    def annualised_return(self) -> float:
+        return get_annual_return(self.df['Return'])
 
     # TODO: Store these values into the dict
 
-
     # ---- time series value functions ----
-    # TODO: Maybe change the return type? User can get the pd.Series of the results below
-    def peak(self):
-        self.df['Peak'] = [self.df['Value'].iloc[:i + 1].max() for i in range(self.df.shape[0])]
+    def peak(self) -> pd.Series:
+        peaks = pd.Series([self.df['Value'].iloc[:i + 1].max() for i in range(self.df.shape[0])], index=self.df.index)
+        return peaks
 
-    def drawdown(self):
-        self.df['Drawdown'] = self.df['Value'] / self.df['Peak'] - 1
+    def drawdown(self) -> pd.Series:
+        peaks = self.peak()
+        return self.df['Value'] / peaks - 1
 
     """
     peak, drawdown, avg drawdown, max drawdown, **
-    calmar ratio, sterling ratio,
-    annualised returns(geo + ari),
-    exposure time, max/avg drawdown duration,
+    calmar ratio, sterling ratio, ***
+    annualised returns, ***
+    exposure time, max/avg drawdown duration, 
 
     win rate,
     best/worst/avg trade %, max/avg trade duration,
     profit factor, expectancy, SQN
     """
-
-
-if __name__ == '__main__':
-    df = yf.download('TSLA', start=datetime(2020, 1, 1))
