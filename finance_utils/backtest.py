@@ -8,6 +8,8 @@ class Backtest:
         :param data: initial columns: Value, Returns
         :param start_date:
         :param end_date:
+        :param benchmark:
+        :param r_f:
         """
 
         # TODO: Buy & Hold Return?
@@ -35,6 +37,9 @@ class Backtest:
 
     # ---- The main function ----
     def run(self) -> None:  # run the backtest
+
+        # TODO: Add customise functions, allow users to choose which item to be included
+
         # -- clean all stuff first --
         self.reset()
 
@@ -74,11 +79,31 @@ class Backtest:
         pass
         # TODO: Plot the backtest result
 
+    # ---- Change parameters ----
     def reset(self):
         self.results = dict()
         columns = self.df.columns.tolist()[2:]
         self.df = self.df.drop(columns=columns)
         print("df & results cleaned")
+
+    def change_start_date(self, start_date: str):
+        self.start_date = start_date
+        self.check_date()
+
+    def change_end_date(self, end_date: str):
+        self.end_date = end_date
+        self.check_date()
+
+    # ---- Error Check ----
+    def check_date(self):
+        if self.start_date > self.end_date:
+            raise ValueError('Error: start_date > end_date')
+
+        if self.start_date < self.df.index[0]:
+            self.start_date = self.df.index[0]
+
+        if self.end_date > self.df.index[-1]:
+            self.end_date = self.df.index[-1]
 
     # ---- Single value functions ----
     def initial_value(self) -> float:

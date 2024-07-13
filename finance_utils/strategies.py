@@ -1,5 +1,28 @@
 import numpy as np
 import pandas as pd
+from backtest import Backtest
+
+
+# TODO: Need to make this an abstract class
+class Strategies:
+    def __init__(self):
+        self.df = None
+
+    def feed_data(self, df: pd.DataFrame) -> None:
+        self.df = df
+
+    def run(self) -> Backtest:
+        results_df = pd.DataFrame()
+        results_df['Value'] = self.get_prices()
+        results_df['Return'] = self.get_returns()
+        # TODO: Need to find a way to let users customise the start, end date, risk-free rate & benchmark
+        return Backtest(results_df, results_df.index.iloc[0], results_df.index.iloc[-1])
+
+    def get_prices(self) -> pd.Series:
+        pass
+
+    def get_returns(self) -> pd.Series:
+        pass
 
 
 def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:

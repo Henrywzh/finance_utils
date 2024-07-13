@@ -3,12 +3,6 @@ import yfinance as yf
 
 
 """
-
-class Data:
-- ohlcv for every tickers and benchmark (ORIGINAL DATA)
-- returns, prices for every tickers
-- results for every tickers
-
 class Portfolio:
 - weights
 - tickers name
