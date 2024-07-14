@@ -7,22 +7,38 @@ from backtest import Backtest
 class Strategies:
     def __init__(self):
         self.df = None
+        self.cash = 10_000
 
     def feed_data(self, df: pd.DataFrame) -> None:
         self.df = df
 
+    def feed_cash(self, cash: float | int) -> None:
+        self.cash = cash
+
     def run(self) -> Backtest:
         results_df = pd.DataFrame()
-        results_df['Value'] = self.get_prices()
-        results_df['Return'] = self.get_returns()
+        results_df['Value'] = self.get_price()
+        results_df['Return'] = self.get_return()
         # TODO: Need to find a way to let users customise the start, end date, risk-free rate & benchmark
         return Backtest(results_df, results_df.index.iloc[0], results_df.index.iloc[-1])
 
-    def get_prices(self) -> pd.Series:
+    def get_price(self) -> pd.Series:
         pass
 
-    def get_returns(self) -> pd.Series:
+    def get_return(self) -> pd.Series:
         pass
+
+    def get_signal(self) -> pd.Series:
+        pass
+
+    def get_position(self) -> pd.Series:
+        return self.get_signal().shift(1).fillna(0)
+
+    def get_strategy_return(self) -> pd.Series:
+        return self.get_return() * self.get_position()
+
+    def get_cumulative_return(self) -> pd.Series:
+        return (1 + self.get_strategy_return()).cumprod()
 
 
 def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:

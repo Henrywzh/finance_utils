@@ -76,33 +76,26 @@ def get_annual_return(returns: pd.Series):
     return (np.cumprod(1 + returns) - 1) ** (365 / days)
 
 
-def get_sharpe_ratio(returns: pd.Series, r_f):  # should allow any iterable
+def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     """
     :param returns: the asset returns
-    :param r_f: risk-free rate, can be an iterable or a number
+    :param r_f: risk-free rate
 
 
-    NOT
-    DONE
-    YET
-    TODO: (r_i - r_f) / sigma(r_i - r_f)
+    TODO: Allow user to choose r_f?
     """
-    r_p: pd.Series = returns
 
-    std_r_p = get_risk(r_p)
-    annual_r_p = get_annual_return(r_p)
+    std_r_p = get_risk(returns)
+    annual_r_p = get_annual_return(returns) - r_f
     return annual_r_p / std_r_p
 
 
-def get_sortino_ratio(returns: pd.Series, r_f, threshold=0):
+def get_sortino_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     """
-    NOT
-    DONE
-    YET
-    TODO: threshold? risk-free rate?
+    TODO: Same as sharpe_ratio
     """
     n = returns.shape[0]
-    down_vol = sum([max(r_i - threshold, 0) ** 2 for r_i in returns]) / (n - 1)
+    down_vol = sum([max(r_i - r_f, 0) ** 2 for r_i in returns]) / (n - 1)
     annual_r_p = get_annual_return(returns) - r_f
     return annual_r_p / np.sqrt(down_vol)
 

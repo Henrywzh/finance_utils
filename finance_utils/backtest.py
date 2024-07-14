@@ -3,19 +3,25 @@ import yfinance as yf
 
 
 class Backtest:
-    def __init__(self, data: pd.DataFrame, start_date, end_date, benchmark: str = 'SPY', r_f=None):
+    def __init__(
+            self,
+            data: pd.DataFrame,
+            start_date: str, end_date: str,
+            benchmark: str = None,
+            r_f: float | int = None
+    ):
         """
-        :param data: initial columns: Value, Returns
+        :param data: initial columns: Value, Return, Price
         :param start_date:
         :param end_date:
         :param benchmark:
         :param r_f:
         """
 
-        # TODO: Buy & Hold Return?
+        # TODO: Buy & Hold Return | Benchmark Return?, Monthly & Yearly Return?
 
-        if 'Value' not in data.columns or 'Return' not in data.columns:
-            raise ValueError('data columns should contain: Value, Return')
+        if 'Value' not in data.columns or 'Return' not in data.columns or 'Price' not in data.columns:
+            raise ValueError('data columns should contain: Value, Return, Price')
 
         if start_date > end_date:
             raise ValueError('start_date should be less than end_date')
@@ -27,7 +33,7 @@ class Backtest:
             end_date = data.index[-1]
 
         self.r_f = 0 if r_f is None else r_f
-        self.benchmark = benchmark
+        self.benchmark = 'Price' if benchmark is None else benchmark
         self.df = data  # assumes results initially contains the returns & Value
         self.start_date = start_date
         self.end_date = end_date
@@ -37,6 +43,7 @@ class Backtest:
 
     # ---- The main function ----
     def run(self) -> None:  # run the backtest
+        print("Running the backtest...")
 
         # TODO: Add customise functions, allow users to choose which item to be included
 
@@ -69,6 +76,8 @@ class Backtest:
         self.results['Beta'] = beta
         self.results['R^2'] = r_2
 
+        print("Backtesting completed")
+
     def get_results(self) -> dict:  # get results after run
         return self.results
 
@@ -86,13 +95,17 @@ class Backtest:
         self.df = self.df.drop(columns=columns)
         print("df & results cleaned")
 
-    def change_start_date(self, start_date: str):
+    def set_start_date(self, start_date: str):
         self.start_date = start_date
         self.check_date()
 
-    def change_end_date(self, end_date: str):
+    def set_end_date(self, end_date: str):
         self.end_date = end_date
         self.check_date()
+
+    def set_benchmark(self, benchmark: str):
+        self.benchmark = benchmark
+        # TODO: add benchmark data to self.df
 
     # ---- Error Check ----
     def check_date(self):
@@ -116,10 +129,10 @@ class Backtest:
         return self.df['Value'].last()
 
     def max_drawdown(self) -> float:  # some issues with signs
-        return -(self.df['Drawdown']).min()
+        return -(self.df['Drawdown'].min())
 
     def avg_drawdown(self) -> float:  # some issues with signs
-        return -(self.df['Drawdown'][self.df['Drawdown'] < 0]).mean()
+        return -(self.df['Drawdown'][self.df['Drawdown'] < 0].mean())
 
     def calmar_ratio(self) -> float:
         annualised_return = get_annual_return(self.df['Return'])
@@ -130,6 +143,14 @@ class Backtest:
         annualised_return = get_annual_return(self.df['Return'])
         avg_drawdown = self.avg_drawdown()
         return annualised_return / avg_drawdown
+
+    def ulcer_index(self) -> float:
+        # TODO
+        pass
+
+    def martin_ratio(self) -> float:
+        # TODO
+        pass
 
     def annualised_return(self) -> float:
         return get_annual_return(self.df['Return'])
@@ -146,10 +167,10 @@ class Backtest:
     def sortino_ratio(self) -> float:
         return get_sortino_ratio(self.df['Return'], self.r_f)
 
-    def value_at_risk(self, alpha=99, lookback_days=None) -> float:
+    def value_at_risk(self, alpha: float | int = 99, lookback_days: int = None) -> float:
         return get_VaR(self.df['Return'], alpha, lookback_days)
 
-    def conditional_VaR(self, alpha=99, lookback_days=None) -> float:
+    def conditional_VaR(self, alpha: float | int = 99, lookback_days: int = None) -> float:
         return get_CVaR(self.df['Return'], alpha, lookback_days)
 
     def alpha_beta_r(self, benchmark: str) -> (float, float, float):
