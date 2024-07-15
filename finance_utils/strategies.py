@@ -100,7 +100,7 @@ def ema_fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str 
     )  # fill na with 0, if fast MA > slow MA, signal = 1, else -1
     _df['Position'] = _df['Signal'].shift(1)
     _df['Strategy Return'] = _df[ticker_name].pct_change() * _df['Position']
-    _df['Cumulative Return'] = (1 + _df['Strategy Return']).cumprod()
+    _df['Cumulative Return'] = np.cumprod(1 + _df['Strategy Return']) - 1
 
     return _df
 

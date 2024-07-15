@@ -61,53 +61,56 @@ def get_risk(returns: pd.Series):
     return np.sqrt(get_volatility(returns))
 
 
-def get_annual_return(returns: pd.Series):
+def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
     """
     :param returns:
+    :param freq:
     :return: gives out the compound annual return
 
-    if want calendar year performance, input returns with data constrained only within the year
     """
-    days = returns.shape[0]
-    returns = percent_to_num(returns)
-    # dates?
-    # assumes daily
+    if freq == 'D':
+        period = 252
+    elif freq == 'M':
+        period = 12
+    elif freq == 'Q':
+        period = 4
+    else:
+        raise ValueError('Does not support this kind of freq')
 
-    return (np.cumprod(1 + returns) - 1) ** (365 / days)
+    time_count = returns.shape[0]
+    returns = percent_to_num(returns)
+
+    return (np.cumprod(1 + returns) - 1).iloc[-1] ** (period / time_count)
 
 
 def monthly_return(df: pd.Series) -> pd.Series:
     monthly = (df.resample('M').last() - df.resample('M').first()) / df.resample('M').first()
+
     return monthly
 
 
 def yearly_return(df: pd.Series) -> pd.Series:
     yearly = (df.resample('Y').last() - df.resample('Y').first()) / df.resample('Y').first()
+
     return yearly
-    pass
 
 
 def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     """
     :param returns: the asset returns
     :param r_f: risk-free rate
-
-
-    TODO: Allow user to choose r_f?
     """
-
     std_r_p = get_risk(returns)
     annual_r_p = get_annual_return(returns) - r_f
+
     return annual_r_p / std_r_p
 
 
 def get_sortino_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
-    """
-    TODO: Same as sharpe_ratio
-    """
     n = returns.shape[0]
     down_vol = sum([max(r_i - r_f, 0) ** 2 for r_i in returns]) / (n - 1)
     annual_r_p = get_annual_return(returns) - r_f
+
     return annual_r_p / np.sqrt(down_vol)
 
 
@@ -117,6 +120,7 @@ def get_VaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) ->
         lookback_days = returns.shape[0]
 
     returns = returns.iloc[-lookback_days:]
+
     return np.percentile(returns, 100 * (1 - alpha))
 
 
@@ -144,15 +148,15 @@ def num_to_percent(returns):
 
 # ---- stats ----
 def mean(x):
-    return x.mean()
+    return np.mean(x)
 
 
 def var(x):
-    return x.var()
+    return np.var(x, ddof=1)
 
 
 def std(x):
-    return x.std()
+    return np.std(x, ddof=1)
 
 
 def skew(x):

@@ -68,14 +68,19 @@ class Backtest:
         self.results['Sharpe Ratio'] = self.sharpe_ratio()
         self.results['Downside Volatility'] = self.downside_volatility()
         self.results['Sortino Ratio'] = self.sortino_ratio()
+
         self.results['VaR 95'] = self.value_at_risk(alpha=95)
         self.results['VaR 99'] = self.value_at_risk(alpha=99)
         self.results['CVaR 95'] = self.conditional_VaR(alpha=95)
         self.results['CVaR 99'] = self.conditional_VaR(alpha=99)
+
         alpha, beta, r_2 = self.alpha_beta_r(self.benchmark)
         self.results['Alpha'] = alpha
         self.results['Beta'] = beta
         self.results['R^2'] = r_2
+
+        self.results['Calendar Month Return'] = self.calendar_month_return()
+        self.results['Calendar Year Return'] = self.calendar_year_return()
 
         print("Backtesting completed")
 
@@ -213,6 +218,12 @@ class Backtest:
     def drawdown(self) -> pd.Series:
         peaks = self.peak()
         return self.df['Value'] / peaks - 1
+
+    def calendar_month_return(self) -> pd.Series:
+        return monthly_return(self.df['Price'])
+
+    def calendar_year_return(self) -> pd.Series:
+        return yearly_return(self.df['Price'])
 
     """
     peak, drawdown, avg drawdown, max drawdown, **
