@@ -6,14 +6,20 @@ from backtest import Backtest
 # TODO: Need to make this an abstract class
 class Strategies:
     def __init__(self):
-        self.df = None
-        self.cash = 10_000
+        self.benchmark: str = 'Adj Close'
+        self.df: pd.DataFrame = pd.DataFrame()
+        self.cash: float = 10_000
 
     def feed_data(self, df: pd.DataFrame) -> None:
         self.df = df
 
     def feed_cash(self, cash: float | int) -> None:
+        if cash < 1000:
+            raise ValueError('Cash must be greater than 1000')
         self.cash = cash
+
+    def set_benchmark(self, benchmark: str) -> None:
+        self.benchmark = benchmark
 
     def run(self) -> Backtest:
         results_df = pd.DataFrame()

@@ -51,6 +51,7 @@ class Backtest:
         self.reset()
 
         # -- adding stuff to the df --
+        self.df['Benchmark'] = self._get_benchmark()
         self.df['Peak'] = self.peak()
         self.df['Drawdown'] = self.drawdown()
 
@@ -88,27 +89,42 @@ class Backtest:
         pass
         # TODO: Plot the backtest result
 
-    # ---- Change parameters ----
+    # ---- Reset parameters ----
     def reset(self):
         self.results = dict()
         columns = self.df.columns.tolist()[2:]
         self.df = self.df.drop(columns=columns)
-        print("df & results cleaned")
+        self.set_benchmark_to_buy_and_hold()
+        print("df & results cleaned, benchmark set to buy & hold")
 
+    def _get_benchmark(self) -> pd.Series:
+        if self.benchmark == 'Price':
+            return self.df['Price'].copy()
+
+        try:
+            benchmark_df = yf.download(self.benchmark, start=self.start_date, end=self.end_date)
+            return benchmark_df['Adj Close']
+        except:
+            raise ValueError('Benchmark not found on Yahoo Finance')
+
+    # ---- Changing attributes ----
     def set_start_date(self, start_date: str):
         self.start_date = start_date
-        self.check_date()
+        self._check_date()
 
     def set_end_date(self, end_date: str):
         self.end_date = end_date
-        self.check_date()
+        self._check_date()
 
     def set_benchmark(self, benchmark: str):
         self.benchmark = benchmark
         # TODO: add benchmark data to self.df
 
+    def set_benchmark_to_buy_and_hold(self):
+        self.benchmark = 'Price'
+
     # ---- Error Check ----
-    def check_date(self):
+    def _check_date(self):
         if self.start_date > self.end_date:
             raise ValueError('Error: start_date > end_date')
 

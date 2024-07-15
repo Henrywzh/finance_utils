@@ -76,6 +76,17 @@ def get_annual_return(returns: pd.Series):
     return (np.cumprod(1 + returns) - 1) ** (365 / days)
 
 
+def monthly_return(df: pd.Series) -> pd.Series:
+    monthly = (df.resample('M').last() - df.resample('M').first()) / df.resample('M').first()
+    return monthly
+
+
+def yearly_return(df: pd.Series) -> pd.Series:
+    yearly = (df.resample('Y').last() - df.resample('Y').first()) / df.resample('Y').first()
+    return yearly
+    pass
+
+
 def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     """
     :param returns: the asset returns
