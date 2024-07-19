@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+import yfinance as yf
+from matplotlib import pyplot as plt
+import seaborn as sns
 
 # ---- Functions ----
 """
@@ -27,15 +30,18 @@ single: rolling +
         ]
         
         
-REMINDER:
+REMINDER: 
 - downside volatility = np.sqrt(sum(max(r_i - r_f, 0)**2 / (n - 1))
 - sortino ratio = (r_i - r_f) / downside volatility
 """
 
 
 # assumes we have a dataframe of returns:
-def get_alpha_beta(returns: pd.DataFrame, ticker: str, benchmark: str) -> (float, float, float):
-    beta, alpha, r, _, _ = stats.linregress(returns[ticker], returns[benchmark])
+def get_alpha_beta(returns: pd.Series, benchmark: str = 'SPY') -> (float, float, float):
+    start_date = returns.index[0]
+    end_date = returns.index[-1]
+    benchmark_p = yf.download(benchmark, start=start_date, end=end_date)
+    beta, alpha, r, _, _ = stats.linregress(returns, benchmark_p['Adj Close'].pct_change())
     return alpha, beta, r
 
 
@@ -63,14 +69,14 @@ def get_risk(returns: pd.Series):
 
 def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
     """
-    :param returns:
-    :param freq:
+    :param returns: the returns of the stock with a frequency freq
+    :param freq: D | M | Q
     :return: gives out the compound annual return
 
     """
     if freq == 'D':
         period = 252
-    elif freq == 'M':
+    elif freq == 'M' or freq == 'ME':
         period = 12
     elif freq == 'Q':
         period = 4
@@ -84,15 +90,65 @@ def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
 
 
 def monthly_return(df: pd.Series) -> pd.Series:
-    monthly = (df.resample('M').last() - df.resample('M').first()) / df.resample('M').first()
+    """
+    :param df: pd.Series, the price of the stock
+    :return: pd.Series, the monthly return of the stock
+    """
+    monthly = (df.resample('ME').last() - df.resample('ME').first()) / df.resample('ME').first()
 
-    return monthly
+    return monthly.rename("Monthly Return")
+
+
+def plot_return_heatmap(_monthly_return: pd.Series):
+    """
+    :param _monthly_return: either daily price or monthly return of the stock
+    :return: a heatmap
+    """
+
+    # -- check input --
+    if _monthly_return.name != 'Monthly Return':
+        _monthly_return = monthly_return(_monthly_return)
+
+    # -- reshaping --
+    _df = pd.DataFrame(_monthly_return)
+    _df['Year'] = _df.index.year
+    _df['Month'] = _df.index.month
+    _df.index = [i for i in range(_df.shape[0])]
+
+    # -- drawing the heatmap --
+    result = _df.pivot(index='Year', columns='Month', values='Monthly Return')
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax = sns.heatmap(result, linewidths=0.30, annot=True)
+    plt.title("Calendar Return")
 
 
 def yearly_return(df: pd.Series) -> pd.Series:
-    yearly = (df.resample('Y').last() - df.resample('Y').first()) / df.resample('Y').first()
+    """
+    :param df: pd.Series, the price of the stock
+    :return: pd.Series, the yearly return of the stock
+    """
+    yearly = (df.resample('YE').last() - df.resample('YE').first()) / df.resample('YE').first()
 
-    return yearly
+    return yearly.rename("Yearly Return")
+
+
+def plot_yearly_return(_yearly_return: pd.Series):
+    """
+    :param _yearly_return: either daily price or yearly return of the stock
+    :return: a bar plot of yearly return of the stock
+    """
+
+    # -- check input --
+    if _yearly_return.name != 'Yearly Return':
+        _yearly_return = yearly_return(_yearly_return)
+
+    _yearly_return = round(_yearly_return, 3)
+
+    # -- plotting --
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(_yearly_return.index.year, _yearly_return)
+    ax.set(xlabel='Year', ylabel='Return', title='Yearly Return')
+    ax.bar_label(bars)
 
 
 def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:

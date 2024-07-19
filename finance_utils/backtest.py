@@ -18,7 +18,8 @@ class Backtest:
         :param r_f:
         """
 
-        # TODO: Buy & Hold Return | Benchmark Return?, Monthly & Yearly Return?
+        # TODO: Buy & Hold Return | Benchmark Return?
+        # TODO: Change all the format to percentage (%)
 
         if 'Value' not in data.columns or 'Return' not in data.columns or 'Price' not in data.columns:
             raise ValueError('data columns should contain: Value, Return, Price')
@@ -114,10 +115,12 @@ class Backtest:
 
     # ---- Changing attributes ----
     def set_start_date(self, start_date: str):
+        # TODO: make sure the type is correct
         self.start_date = start_date
         self._check_date()
 
     def set_end_date(self, end_date: str):
+        # TODO: make sure the type is correct
         self.end_date = end_date
         self._check_date()
 
