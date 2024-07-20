@@ -177,7 +177,7 @@ def get_VaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) ->
 
     returns = returns.iloc[-lookback_days:]
 
-    return np.percentile(returns, 100 * (1 - alpha))
+    return np.percentile(returns, 100 - alpha)
 
 
 def get_CVaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) -> float:

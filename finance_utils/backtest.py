@@ -1,4 +1,4 @@
-from utils import *
+from .utils import *
 import yfinance as yf
 
 
@@ -6,7 +6,8 @@ class Backtest:
     def __init__(
             self,
             data: pd.DataFrame,
-            start_date: str, end_date: str,
+            start_date: str = None,
+            end_date: str = None,
             benchmark: str = None,
             r_f: float | int = None
     ):
@@ -21,11 +22,9 @@ class Backtest:
         # TODO: Buy & Hold Return | Benchmark Return?
         # TODO: Change all the format to percentage (%)
 
+        # -- format check --
         if 'Value' not in data.columns or 'Return' not in data.columns or 'Price' not in data.columns:
             raise ValueError('data columns should contain: Value, Return, Price')
-
-        if start_date > end_date:
-            raise ValueError('start_date should be less than end_date')
 
         if start_date is None or start_date < data.index[0]:
             start_date = data.index[0]
@@ -33,6 +32,10 @@ class Backtest:
         if end_date is None or end_date > data.index[-1]:
             end_date = data.index[-1]
 
+        if start_date > end_date:
+            raise ValueError('start_date should be less than end_date')
+
+        # -- initialisation --
         self.r_f = 0 if r_f is None else r_f
         self.benchmark = 'Price' if benchmark is None else benchmark
         self.df = data  # assumes results initially contains the returns & Value
@@ -75,7 +78,7 @@ class Backtest:
         self.results['CVaR 95'] = self.conditional_VaR(alpha=95)
         self.results['CVaR 99'] = self.conditional_VaR(alpha=99)
 
-        alpha, beta, r_2 = self.alpha_beta_r(self.benchmark)
+        alpha, beta, r_2 = self.alpha_beta_r()
         self.results['Alpha'] = alpha
         self.results['Beta'] = beta
         self.results['R^2'] = r_2
@@ -98,7 +101,7 @@ class Backtest:
     # ---- Reset parameters ----
     def reset(self):
         self.results = dict()
-        columns = self.df.columns.tolist()[2:]
+        columns = self.df.columns.tolist()[3:]  # removes all the columns besides from (Price, Value, Return)
         self.df = self.df.drop(columns=columns)
         self.set_benchmark_to_buy_and_hold()
         print("df & results cleaned, benchmark set to buy & hold")
@@ -144,13 +147,13 @@ class Backtest:
 
     # ---- Single value functions ----
     def initial_value(self) -> float:
-        return self.df['Value'].first()
+        return self.df['Value'].iloc[0]
 
     def peak_value(self) -> float:
         return self.df['Value'].max()
 
     def final_value(self) -> float:
-        return self.df['Value'].last()
+        return self.df['Value'].iloc[-1]
 
     def max_drawdown(self) -> float:  # some issues with signs
         return -(self.df['Drawdown'].min())
@@ -197,18 +200,23 @@ class Backtest:
     def conditional_VaR(self, alpha: float | int = 99, lookback_days: int = None) -> float:
         return get_CVaR(self.df['Return'], alpha, lookback_days)
 
-    def alpha_beta_r(self, benchmark: str) -> (float, float, float):
-        benchmark_df = yf.download(benchmark, start=self.start_date, end=self.end_date)
-        benchmark_returns = benchmark_df['Adj Close'].pct_change()
-        beta, alpha, r_2, _, _ = stats.linregress(self.df['Return'], benchmark_returns)
+    def alpha_beta_r(self) -> (float, float, float):
+        if self.benchmark == 'Price':
+            beta, alpha, r_2, _, _ = stats.linregress(self.df['Return'], self.df['Price'])
+        else:
+
+            benchmark_df = yf.download(self.benchmark, start=self.start_date, end=self.end_date)
+            benchmark_returns = benchmark_df['Adj Close'].pct_change()
+            beta, alpha, r_2, _, _ = stats.linregress(self.df['Return'], benchmark_returns)
+
         return alpha, beta, r_2
 
-    def alpha(self, benchmark: str) -> float:
-        alpha, _, _ = self.alpha_beta_r(benchmark)
+    def alpha(self) -> float:
+        alpha, _, _ = self.alpha_beta_r()
         return alpha
 
-    def beta(self, benchmark: str) -> float:
-        _, beta, _ = self.alpha_beta_r(benchmark)
+    def beta(self) -> float:
+        _, beta, _ = self.alpha_beta_r()
         return beta
 
     # TODO: get r_f from yf directly instead of users' input
@@ -216,10 +224,12 @@ class Backtest:
     # ---- time series value functions ----
     def peak(self) -> pd.Series:
         peaks = pd.Series([self.df['Value'].iloc[:i + 1].max() for i in range(self.df.shape[0])], index=self.df.index)
+        print(peaks)
         return peaks
 
     def drawdown(self) -> pd.Series:
         peaks = self.peak()
+        print(self.df['Value'] / peaks - 1)
         return self.df['Value'] / peaks - 1
 
     def calendar_month_return(self) -> pd.Series:
