@@ -54,17 +54,28 @@ def get_upside_returns(returns: pd.Series, threshold=0) -> pd.Series:
 
 
 # ---- return type: single value ----
-def get_volatility(returns: pd.Series):
+def get_volatility(returns: pd.Series) -> float:
+    # TODO: Volatility === Risk === Standard deviation
     if returns.abs().max() < 1:
         temp_df = returns * 100
     else:
         temp_df = returns.copy()
 
-    return temp_df.var()
+    temp_df = temp_df.dropna(axis=0)
+
+    return np.sqrt(temp_df.var())
 
 
-def get_risk(returns: pd.Series):
-    return np.sqrt(get_volatility(returns))
+def get_downside_volatility(returns: pd.Series, threshold: int | float = 0) -> float:
+    # TODO: threshold ???
+    if returns.abs().max() < 1:
+        returns = returns * 100
+    else:
+        returns = returns.copy()
+
+    returns = returns.dropna(axis=0)
+    n = returns.shape[0]
+    return np.sqrt(sum([max(r_i, threshold) ** 2 for r_i in returns]) / (n - 1))
 
 
 def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
@@ -74,6 +85,8 @@ def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
     :return: gives out the compound annual return
 
     """
+    freq = freq.upper()
+
     if freq == 'D':
         period = 252
     elif freq == 'M' or freq == 'ME':
@@ -156,18 +169,17 @@ def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     :param returns: the asset returns
     :param r_f: risk-free rate
     """
-    std_r_p = get_risk(returns)
+    std_r_p = get_volatility(returns)
     annual_r_p = get_annual_return(returns) - r_f
 
     return annual_r_p / std_r_p
 
 
 def get_sortino_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
-    n = returns.shape[0]
-    down_vol = sum([max(r_i - r_f, 0) ** 2 for r_i in returns]) / (n - 1)
+    down_vol = get_volatility(returns)
     annual_r_p = get_annual_return(returns) - r_f
 
-    return annual_r_p / np.sqrt(down_vol)
+    return annual_r_p / down_vol
 
 
 def get_VaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) -> float:

@@ -189,7 +189,7 @@ class Backtest:
         return get_sharpe_ratio(self.df['Return'], self.r_f)
 
     def downside_volatility(self) -> float:
-        return get_volatility(get_downside_returns(self.df['Return']))
+        return get_downside_volatility(self.df['Return'])
 
     def sortino_ratio(self) -> float:
         return get_sortino_ratio(self.df['Return'], self.r_f)
@@ -201,13 +201,15 @@ class Backtest:
         return get_CVaR(self.df['Return'], alpha, lookback_days)
 
     def alpha_beta_r(self) -> (float, float, float):
+        returns = self.df['Return'].dropna(axis=0)
+        benchmark_returns = self.df['Price'].pct_change().dropna(axis=0)
         if self.benchmark == 'Price':
-            beta, alpha, r_2, _, _ = stats.linregress(self.df['Return'], self.df['Price'])
+            beta, alpha, r_2, _, _ = stats.linregress(returns, benchmark_returns)
         else:
 
             benchmark_df = yf.download(self.benchmark, start=self.start_date, end=self.end_date)
-            benchmark_returns = benchmark_df['Adj Close'].pct_change()
-            beta, alpha, r_2, _, _ = stats.linregress(self.df['Return'], benchmark_returns)
+            benchmark_returns = benchmark_df['Adj Close'].pct_change().dropna(axis=0)
+            beta, alpha, r_2, _, _ = stats.linregress(returns, benchmark_returns)
 
         return alpha, beta, r_2
 
@@ -224,12 +226,10 @@ class Backtest:
     # ---- time series value functions ----
     def peak(self) -> pd.Series:
         peaks = pd.Series([self.df['Value'].iloc[:i + 1].max() for i in range(self.df.shape[0])], index=self.df.index)
-        print(peaks)
         return peaks
 
     def drawdown(self) -> pd.Series:
         peaks = self.peak()
-        print(self.df['Value'] / peaks - 1)
         return self.df['Value'] / peaks - 1
 
     def calendar_month_return(self) -> pd.Series:
