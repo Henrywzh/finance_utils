@@ -55,7 +55,6 @@ def get_upside_returns(returns: pd.Series, threshold=0) -> pd.Series:
 
 # ---- return type: single value ----
 def get_volatility(returns: pd.Series) -> float:
-    # TODO: Volatility === Risk === Standard deviation
     if returns.abs().max() < 1:
         temp_df = returns * 100
     else:
@@ -112,8 +111,9 @@ def monthly_return(df: pd.Series) -> pd.Series:
     return monthly.rename("Monthly Return")
 
 
-def plot_return_heatmap(_monthly_return: pd.Series):
+def plot_return_heatmap(_monthly_return: pd.Series, annot: bool = True):
     """
+    :param annot:
     :param _monthly_return: either daily price or monthly return of the stock
     :return: a heatmap
     """
@@ -121,6 +121,9 @@ def plot_return_heatmap(_monthly_return: pd.Series):
     # -- check input --
     if _monthly_return.name != 'Monthly Return':
         _monthly_return = monthly_return(_monthly_return)
+
+    # -- format check --
+    _monthly_return = num_to_percent(_monthly_return)
 
     # -- reshaping --
     _df = pd.DataFrame(_monthly_return)
@@ -131,8 +134,10 @@ def plot_return_heatmap(_monthly_return: pd.Series):
     # -- drawing the heatmap --
     result = _df.pivot(index='Year', columns='Month', values='Monthly Return')
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax = sns.heatmap(result, linewidths=0.30, annot=True)
-    plt.title("Calendar Return")
+
+    ax = sns.heatmap(result, linewidths=0.30, annot=annot)
+    plt.title("Calendar Return (%)")
+    plt.show()
 
 
 def yearly_return(df: pd.Series) -> pd.Series:
@@ -155,13 +160,16 @@ def plot_yearly_return(_yearly_return: pd.Series):
     if _yearly_return.name != 'Yearly Return':
         _yearly_return = yearly_return(_yearly_return)
 
-    _yearly_return = round(_yearly_return, 3)
+    # -- format check --
+    _yearly_return = round(num_to_percent(_yearly_return), 2)
 
     # -- plotting --
     fig, ax = plt.subplots(figsize=(10, 6))
     bars = ax.bar(_yearly_return.index.year, _yearly_return)
-    ax.set(xlabel='Year', ylabel='Return', title='Yearly Return')
+    ax.set(xlabel='Year', ylabel='Return', title='Yearly Return (%)')
     ax.bar_label(bars)
+
+    plt.show()
 
 
 def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:

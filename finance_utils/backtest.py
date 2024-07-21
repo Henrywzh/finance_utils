@@ -83,10 +83,11 @@ class Backtest:
         self.results['Beta'] = beta
         self.results['R^2'] = r_2
 
-        self.results['Calendar Month Return'] = self.calendar_month_return()
-        self.results['Calendar Year Return'] = self.calendar_year_return()
+        self.results['Monthly Return'] = self.calendar_month_return()
+        self.results['Yearly Return'] = self.calendar_year_return()
 
         print("Backtesting completed")
+        self.plot()
 
     def get_results(self) -> dict:  # get results after run
         return self.results
@@ -94,9 +95,33 @@ class Backtest:
     def get_df(self) -> pd.DataFrame:
         return self.df
 
+    # ---- Visualisation ----
+
     def plot(self):
+        self.plot_cumulative_returns()
+        self.plot_drawdown()
+        self.plot_volatility()
+        self.plot_monthly_return()
+        self.plot_yearly_return()
+
+    def plot_cumulative_returns(self):
         pass
-        # TODO: Plot the backtest result
+
+    def plot_drawdown(self):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(self.df['Drawdown'], label='Drawdown')
+        ax.set(xlabel='Date', title='Drawdown')
+        plt.legend(loc='best')
+        plt.show()
+
+    def plot_volatility(self):
+        pass
+
+    def plot_monthly_return(self):
+        plot_return_heatmap(self.results['Monthly Return'])
+
+    def plot_yearly_return(self):
+        plot_yearly_return(self.results['Yearly Return'])
 
     # ---- Reset parameters ----
     def reset(self):
