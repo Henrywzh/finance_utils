@@ -105,7 +105,12 @@ class Backtest:
         self.plot_yearly_return()
 
     def plot_cumulative_returns(self):
-        pass
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(100 * self.df['Benchmark'] / self.df['Benchmark'].iloc[0] - 1, label='Benchmark')
+        ax.plot(100 * self.df['Value'] / self.df['Value'].iloc[0] - 1, label='Strategy')
+        ax.set(xlabel='Date', ylabel='Cumulative Return (%)', title='Strategy & Benchmark Comparison')
+        plt.legend(loc='best')
+        plt.show()
 
     def plot_drawdown(self):
         fig, ax = plt.subplots(figsize=(10, 6))

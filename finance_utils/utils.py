@@ -62,7 +62,7 @@ def get_volatility(returns: pd.Series) -> float:
 
     temp_df = temp_df.dropna(axis=0)
 
-    return np.sqrt(temp_df.var())
+    return temp_df.std(ddof=1)
 
 
 def get_downside_volatility(returns: pd.Series, threshold: int | float = 0) -> float:
@@ -135,7 +135,7 @@ def plot_return_heatmap(_monthly_return: pd.Series, annot: bool = True):
     result = _df.pivot(index='Year', columns='Month', values='Monthly Return')
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    ax = sns.heatmap(result, linewidths=0.30, annot=annot)
+    ax = sns.heatmap(result, linewidths=0.30, annot=annot, center=0)
     plt.title("Calendar Return (%)")
     plt.show()
 
