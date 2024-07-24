@@ -1,3 +1,5 @@
+import pandas as pd
+
 from .utils import *
 import yfinance as yf
 
@@ -19,7 +21,6 @@ class Backtest:
         :param r_f:
         """
 
-        # TODO: Buy & Hold Return | Benchmark Return?
         # TODO: Change all the format to percentage (%)
 
         # -- format check --
@@ -114,13 +115,19 @@ class Backtest:
 
     def plot_drawdown(self):
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(self.df['Drawdown'], label='Drawdown')
-        ax.set(xlabel='Date', title='Drawdown')
+        ax.plot(self.df['Drawdown'] * 100)
+        ax.set(xlabel='Date', ylabel='Drawdown (%)', title='Drawdown')
         plt.legend(loc='best')
         plt.show()
 
-    def plot_volatility(self):
-        pass
+    def plot_volatility(self, rolling_window: int = 30):
+        vol_df = self.rolling_volatility(rolling_window)
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(vol_df)
+        ax.set(xlabel='Date', ylabel='Volatility (%)', title=f'{rolling_window}-day Volatility')
+        plt.legend(loc='best')
+        plt.show()
 
     def plot_monthly_return(self):
         plot_return_heatmap(self.results['Monthly Return'])
@@ -148,12 +155,10 @@ class Backtest:
 
     # ---- Changing attributes ----
     def set_start_date(self, start_date: str):
-        # TODO: make sure the type is correct
         self.start_date = start_date
         self._check_date()
 
     def set_end_date(self, end_date: str):
-        # TODO: make sure the type is correct
         self.end_date = end_date
         self._check_date()
 
@@ -267,6 +272,10 @@ class Backtest:
 
     def calendar_year_return(self) -> pd.Series:
         return yearly_return(self.df['Price'])
+
+    def rolling_volatility(self, windows: int = 30) -> pd.Series:
+        return (self.df['Return'] * 100).rolling(windows).std(ddof=1)
+
 
     """
     peak, drawdown, avg drawdown, max drawdown, **

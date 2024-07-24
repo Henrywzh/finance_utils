@@ -172,6 +172,22 @@ def plot_yearly_return(_yearly_return: pd.Series):
     plt.show()
 
 
+def get_rolling_volatility(df: pd.Series, rolling_window: int = 30) -> pd.Series:
+    # TODO
+    pass
+
+
+def plot_rolling_volatility(_rolling_vol: pd.Series, rolling_window: int = 30):
+    if _rolling_vol.name != 'Rolling Volatility':
+        _rolling_vol = get_rolling_volatility(_rolling_vol, rolling_window)
+
+    # -- plot --
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(_rolling_vol)
+    ax.set(xlabel='Date', ylabel='Volatility (%)', title='Rolling Volatility')
+    plt.show()
+
+
 def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     """
     :param returns: the asset returns
