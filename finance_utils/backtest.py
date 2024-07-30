@@ -21,8 +21,6 @@ class Backtest:
         :param r_f:
         """
 
-        # TODO: Change all the format to percentage (%)
-
         # -- format check --
         if 'Value' not in data.columns or 'Return' not in data.columns or 'Price' not in data.columns:
             raise ValueError('data columns should contain: Value, Return, Price')
@@ -61,15 +59,9 @@ class Backtest:
         self.df['Drawdown'] = self.drawdown()
 
         # -- adding stuff to the results --
-        self.results['Initial Value'] = self.initial_value()
-        self.results['Peak Value'] = self.peak_value()
-        self.results['Final Value'] = self.final_value()
-        self.results['Max Drawdown'] = self.max_drawdown()
-        self.results['Avg Drawdown'] = self.avg_drawdown()
-        self.results['Calmar Ratio'] = self.calmar_ratio()
-        self.results['Sterling Ratio'] = self.sterling_ratio()
-        self.results['Annualised Return'] = self.annualised_return()
-        self.results['Volatility'] = self.volatility()
+        self.results['Annualised Return (Geo)'] = self.annualised_return()
+        self.results['Avg Annual Return (Ari)'] = self.avg_annual_return()
+        self.results['Volatility (Std)'] = self.volatility()
         self.results['Sharpe Ratio'] = self.sharpe_ratio()
         self.results['Downside Volatility'] = self.downside_volatility()
         self.results['Sortino Ratio'] = self.sortino_ratio()
@@ -79,6 +71,14 @@ class Backtest:
         self.results['CVaR 95'] = self.conditional_VaR(alpha=95)
         self.results['CVaR 99'] = self.conditional_VaR(alpha=99)
 
+        self.results['Initial Value'] = self.initial_value()
+        self.results['Peak Value'] = self.peak_value()
+        self.results['Final Value'] = self.final_value()
+        self.results['Max Drawdown'] = self.max_drawdown()
+        self.results['Avg Drawdown'] = self.avg_drawdown()
+        self.results['Calmar Ratio'] = self.calmar_ratio()
+        self.results['Sterling Ratio'] = self.sterling_ratio()
+
         alpha, beta, r_2 = self.alpha_beta_r()
         self.results['Alpha'] = alpha
         self.results['Beta'] = beta
@@ -86,8 +86,10 @@ class Backtest:
 
         self.results['Monthly Return'] = self.calendar_month_return()
         self.results['Yearly Return'] = self.calendar_year_return()
+        self.results['Monthly Volatility'] = self.calendar_month_volatility()
 
         print("Backtesting completed")
+        self._print_results()
         self.plot()
 
     def get_results(self) -> dict:  # get results after run
@@ -98,14 +100,15 @@ class Backtest:
 
     # ---- Visualisation ----
 
-    def plot(self):
+    def plot(self) -> None:
         self.plot_cumulative_returns()
         self.plot_drawdown()
         self.plot_volatility()
         self.plot_monthly_return()
         self.plot_yearly_return()
+        self.plot_monthly_volatility()
 
-    def plot_cumulative_returns(self):
+    def plot_cumulative_returns(self) -> None:
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(100 * self.df['Benchmark'] / self.df['Benchmark'].iloc[0] - 1, label='Benchmark')
         ax.plot(100 * self.df['Value'] / self.df['Value'].iloc[0] - 1, label='Strategy')
@@ -113,14 +116,14 @@ class Backtest:
         plt.legend(loc='best')
         plt.show()
 
-    def plot_drawdown(self):
+    def plot_drawdown(self) -> None:
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(self.df['Drawdown'] * 100)
         ax.set(xlabel='Date', ylabel='Drawdown (%)', title='Drawdown')
         plt.legend(loc='best')
         plt.show()
 
-    def plot_volatility(self, rolling_window: int = 30):
+    def plot_volatility(self, rolling_window: int = 30) -> None:
         vol_df = self.rolling_volatility(rolling_window)
 
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -129,14 +132,24 @@ class Backtest:
         plt.legend(loc='best')
         plt.show()
 
-    def plot_monthly_return(self):
-        plot_return_heatmap(self.results['Monthly Return'])
+    def plot_monthly_return(self) -> None:
+        plot_heatmap(self.results['Monthly Return'])
 
-    def plot_yearly_return(self):
+    def plot_yearly_return(self) -> None:
         plot_yearly_return(self.results['Yearly Return'])
 
+    def plot_monthly_volatility(self) -> None:
+        plot_heatmap(self.results['Monthly Volatility'])
+
+    def _print_results(self) -> None:
+        for key in self.results:
+            if isinstance(self.results[key], pd.Series) or isinstance(self.results[key], pd.DataFrame):
+                continue
+
+            print(f'{key}: {self.results[key]}')
+
     # ---- Reset parameters ----
-    def reset(self):
+    def reset(self) -> None:
         self.results = dict()
         columns = self.df.columns.tolist()[3:]  # removes all the columns besides from (Price, Value, Return)
         self.df = self.df.drop(columns=columns)
@@ -154,23 +167,25 @@ class Backtest:
             raise ValueError('Benchmark not found on Yahoo Finance')
 
     # ---- Changing attributes ----
-    def set_start_date(self, start_date: str):
+    def set_start_date(self, start_date: str) -> None:
         self.start_date = start_date
         self._check_date()
 
-    def set_end_date(self, end_date: str):
+    def set_end_date(self, end_date: str) -> None:
         self.end_date = end_date
         self._check_date()
 
-    def set_benchmark(self, benchmark: str):
+    def set_benchmark(self, benchmark: str) -> None:
         self.benchmark = benchmark
-        # TODO: add benchmark data to self.df
 
-    def set_benchmark_to_buy_and_hold(self):
+        # rerun the backtest
+        self.run()
+
+    def set_benchmark_to_buy_and_hold(self) -> None:
         self.benchmark = 'Price'
 
     # ---- Error Check ----
-    def _check_date(self):
+    def _check_date(self) -> None:
         if self.start_date > self.end_date:
             raise ValueError('Error: start_date > end_date')
 
@@ -214,8 +229,17 @@ class Backtest:
         # TODO
         pass
 
-    def annualised_return(self) -> float:
-        return get_annual_return(self.df['Return'])
+    def annualised_return(self, geo: bool = True) -> float:
+        return get_annual_return(self.df['Return'], geo=geo)
+
+    def avg_annual_return(self) -> float:
+        """
+        Calculates the arithmetic average annual return by calendar year
+        :return:
+        """
+        yearly_returns = self.calendar_year_return()
+
+        return yearly_returns.mean()
 
     def volatility(self) -> float:
         return get_volatility(self.df['Return'])
@@ -273,8 +297,11 @@ class Backtest:
     def calendar_year_return(self) -> pd.Series:
         return yearly_return(self.df['Price'])
 
+    def calendar_month_volatility(self) -> pd.Series:
+        return monthly_volatility(self.df['Return'])
+
     def rolling_volatility(self, windows: int = 30) -> pd.Series:
-        return (self.df['Return'] * 100).rolling(windows).std(ddof=1)
+        return (self.df['Return'] * 100).rolling(windows).std(ddof=1) * np.sqrt(TRADING_DAYS)
 
 
     """

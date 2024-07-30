@@ -35,6 +35,11 @@ REMINDER:
 - sortino ratio = (r_i - r_f) / downside volatility
 """
 
+# ---- constants -----
+TRADING_DAYS: int = 252
+TRADING_MONTHS: int = 12
+TRADING_QUARTER: int = 4
+
 
 # assumes we have a dataframe of returns:
 def get_alpha_beta(returns: pd.Series, benchmark: str = 'SPY') -> (float, float, float):
@@ -55,30 +60,22 @@ def get_upside_returns(returns: pd.Series, threshold=0) -> pd.Series:
 
 # ---- return type: single value ----
 def get_volatility(returns: pd.Series) -> float:
-    if returns.abs().max() < 1:
-        temp_df = returns * 100
-    else:
-        temp_df = returns.copy()
+    temp_df = returns.dropna(axis=0)
 
-    temp_df = temp_df.dropna(axis=0)
-
-    return temp_df.std(ddof=1)
+    return temp_df.std(ddof=1) * np.sqrt(TRADING_DAYS)
 
 
 def get_downside_volatility(returns: pd.Series, threshold: int | float = 0) -> float:
-    # TODO: threshold ???
-    if returns.abs().max() < 1:
-        returns = returns * 100
-    else:
-        returns = returns.copy()
-
     returns = returns.dropna(axis=0)
     n = returns.shape[0]
-    return np.sqrt(sum([max(r_i, threshold) ** 2 for r_i in returns]) / (n - 1))
+    downside_vol = np.sqrt(sum([min(r_i - threshold, 0) ** 2 for r_i in returns]) / (n - 1))
+
+    return downside_vol * np.sqrt(TRADING_DAYS)
 
 
-def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
+def get_annual_return(returns: pd.Series, freq: str = 'D', geo: bool = True) -> float:
     """
+    :param geo:
     :param returns: the returns of the stock with a frequency freq
     :param freq: D | M | Q
     :return: gives out the compound annual return
@@ -87,18 +84,33 @@ def get_annual_return(returns: pd.Series, freq: str = 'D') -> float:
     freq = freq.upper()
 
     if freq == 'D':
-        period = 252
+        period = TRADING_DAYS
     elif freq == 'M' or freq == 'ME':
-        period = 12
+        period = TRADING_MONTHS
     elif freq == 'Q':
-        period = 4
+        period = TRADING_QUARTER
     else:
         raise ValueError('Does not support this kind of freq')
 
-    time_count = returns.shape[0]
-    returns = percent_to_num(returns)
+    returns = returns.dropna(axis=0)
+    time_count = returns.shape[0] - 1
 
-    return (np.cumprod(1 + returns) - 1).iloc[-1] ** (period / time_count)
+    cum_return = np.cumprod(1 + returns)
+
+    if geo:
+        annual_return = cum_return.iloc[-1] ** (period / time_count) - 1
+    else:
+        annual_return = cum_return.iloc[-1] * period / time_count
+
+    return annual_return
+
+
+def monthly_volatility(df: pd.Series) -> pd.Series:
+    """
+    :param df: pd.Series, the return of the stock
+    :return: pd.Series, the monthly volatility of the stock
+    """
+    return ((df * 100).resample('ME').std(ddof=1) * np.sqrt(TRADING_DAYS)).rename('Monthly Volatility')
 
 
 def monthly_return(df: pd.Series) -> pd.Series:
@@ -111,32 +123,32 @@ def monthly_return(df: pd.Series) -> pd.Series:
     return monthly.rename("Monthly Return")
 
 
-def plot_return_heatmap(_monthly_return: pd.Series, annot: bool = True):
+def plot_heatmap(_monthly_df: pd.Series, annot: bool = True):
     """
     :param annot:
-    :param _monthly_return: either daily price or monthly return of the stock
+    :param _monthly_df: monthly return | monthly volatility
     :return: a heatmap
     """
 
-    # -- check input --
-    if _monthly_return.name != 'Monthly Return':
-        _monthly_return = monthly_return(_monthly_return)
+    # # -- check input --
+    # if _monthly_df.name == 'Monthly Return':
+    #
 
     # -- format check --
-    _monthly_return = num_to_percent(_monthly_return)
+    _monthly_df = num_to_percent(_monthly_df)
 
     # -- reshaping --
-    _df = pd.DataFrame(_monthly_return)
+    _df = pd.DataFrame(_monthly_df)
     _df['Year'] = _df.index.year
     _df['Month'] = _df.index.month
     _df.index = [i for i in range(_df.shape[0])]
 
     # -- drawing the heatmap --
-    result = _df.pivot(index='Year', columns='Month', values='Monthly Return')
+    result = _df.pivot(index='Year', columns='Month', values=_monthly_df.name)
     fig, ax = plt.subplots(figsize=(10, 6))
 
     ax = sns.heatmap(result, linewidths=0.30, annot=annot, center=0)
-    plt.title("Calendar Return (%)")
+    plt.title(f"{_monthly_df.name} (%)")
     plt.show()
 
 
@@ -172,22 +184,6 @@ def plot_yearly_return(_yearly_return: pd.Series):
     plt.show()
 
 
-def get_rolling_volatility(df: pd.Series, rolling_window: int = 30) -> pd.Series:
-    # TODO
-    pass
-
-
-def plot_rolling_volatility(_rolling_vol: pd.Series, rolling_window: int = 30):
-    if _rolling_vol.name != 'Rolling Volatility':
-        _rolling_vol = get_rolling_volatility(_rolling_vol, rolling_window)
-
-    # -- plot --
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(_rolling_vol)
-    ax.set(xlabel='Date', ylabel='Volatility (%)', title='Rolling Volatility')
-    plt.show()
-
-
 def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
     """
     :param returns: the asset returns
@@ -200,7 +196,9 @@ def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
 
 
 def get_sortino_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
-    down_vol = get_volatility(returns)
+    r_f = num_to_percent(r_f)
+
+    down_vol = get_downside_volatility(returns)
     annual_r_p = get_annual_return(returns) - r_f
 
     return annual_r_p / down_vol
@@ -227,15 +225,26 @@ def get_CVaR(returns: pd.Series, alpha: float = 99, lookback_days: int = None) -
 
 
 # ---- formats ----
-def percent_to_num(returns):  # converts returns to num
-    if max(abs(returns)) < 1:
-        return returns
+def percent_to_num(x):  # converts returns to num
+    # check instance
+    if isinstance(x, pd.Series) or isinstance(x, pd.DataFrame):
+        if max(abs(x)) < 1:
+            return x
+        else:
+            return x / 100
+
+    elif isinstance(x, int) or isinstance(x, float):
+        if abs(x) < 1:
+            return x
+        else:
+            return x / 100
+
     else:
-        return returns / 100
+        raise TypeError(f'does not support this type of input: {type(x)}')
 
 
-def num_to_percent(returns):
-    return 100 * percent_to_num(returns)
+def num_to_percent(x):
+    return 100 * percent_to_num(x)
 
 
 # ---- stats ----
