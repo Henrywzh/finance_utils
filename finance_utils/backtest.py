@@ -1,5 +1,3 @@
-import pandas as pd
-
 from .utils import *
 import yfinance as yf
 
@@ -14,7 +12,7 @@ class Backtest:
             r_f: float | int = None
     ):
         """
-        :param data: initial columns: Value, Return, Price
+        :param data: initial columns: Value (Strategy Value), Return (Strategy Return), Price (Asset Value)
         :param start_date:
         :param end_date:
         :param benchmark:
@@ -44,11 +42,9 @@ class Backtest:
 
         self.run()
 
-    # ---- The main function ----
+    # -------- The main function --------
     def run(self) -> None:  # run the backtest
         print("Running the backtest...")
-
-        # TODO: Add customise functions, allow users to choose which item to be included
 
         # -- clean all stuff first --
         self.reset()
@@ -79,18 +75,26 @@ class Backtest:
         self.results['Calmar Ratio'] = self.calmar_ratio()
         self.results['Sterling Ratio'] = self.sterling_ratio()
 
-        alpha, beta, r_2 = self.alpha_beta_r()
-        self.results['Alpha'] = alpha
-        self.results['Beta'] = beta
-        self.results['R^2'] = r_2
-
         self.results['Monthly Return'] = self.calendar_month_return()
         self.results['Yearly Return'] = self.calendar_year_return()
         self.results['Monthly Volatility'] = self.calendar_month_volatility()
 
+        if not self._strategy_is_buy_and_hold():
+            self._add_strategy_results()
+
         print("Backtesting completed")
         self._print_results()
         self.plot()
+
+    def _add_strategy_results(self) -> None:
+        """
+        private function, add strategy results to self.results
+        :return:
+        """
+        alpha, beta, r_2 = self.alpha_beta_r()
+        self.results['Alpha'] = alpha
+        self.results['Beta'] = beta
+        self.results['R^2'] = r_2
 
     def get_results(self) -> dict:  # get results after run
         return self.results
@@ -98,8 +102,7 @@ class Backtest:
     def get_df(self) -> pd.DataFrame:
         return self.df
 
-    # ---- Visualisation ----
-
+    # -------- Visualisation --------
     def plot(self) -> None:
         self.plot_cumulative_returns()
         self.plot_drawdown()
@@ -148,7 +151,7 @@ class Backtest:
 
             print(f'{key}: {self.results[key]}')
 
-    # ---- Reset parameters ----
+    # -------- Reset parameters --------
     def reset(self) -> None:
         self.results = dict()
         columns = self.df.columns.tolist()[3:]  # removes all the columns besides from (Price, Value, Return)
@@ -166,36 +169,7 @@ class Backtest:
         except:
             raise ValueError('Benchmark not found on Yahoo Finance')
 
-    # ---- Changing attributes ----
-    def set_start_date(self, start_date: str) -> None:
-        self.start_date = start_date
-        self._check_date()
-
-    def set_end_date(self, end_date: str) -> None:
-        self.end_date = end_date
-        self._check_date()
-
-    def set_benchmark(self, benchmark: str) -> None:
-        self.benchmark = benchmark
-
-        # rerun the backtest
-        self.run()
-
-    def set_benchmark_to_buy_and_hold(self) -> None:
-        self.benchmark = 'Price'
-
-    # ---- Error Check ----
-    def _check_date(self) -> None:
-        if self.start_date > self.end_date:
-            raise ValueError('Error: start_date > end_date')
-
-        if self.start_date < self.df.index[0]:
-            self.start_date = self.df.index[0]
-
-        if self.end_date > self.df.index[-1]:
-            self.end_date = self.df.index[-1]
-
-    # ---- Single value functions ----
+    # -------- Single value functions --------
     def initial_value(self) -> float:
         return self.df['Value'].iloc[0]
 
@@ -282,7 +256,7 @@ class Backtest:
 
     # TODO: get r_f from yf directly instead of users' input
 
-    # ---- time series value functions ----
+    # -------- time series value functions --------
     def peak(self) -> pd.Series:
         peaks = pd.Series([self.df['Value'].iloc[:i + 1].max() for i in range(self.df.shape[0])], index=self.df.index)
         return peaks
@@ -302,6 +276,38 @@ class Backtest:
 
     def rolling_volatility(self, windows: int = 30) -> pd.Series:
         return (self.df['Return'] * 100).rolling(windows).std(ddof=1) * np.sqrt(TRADING_DAYS)
+
+    # -------- Changing attributes --------
+    def set_start_date(self, start_date: str) -> None:
+        self.start_date = start_date
+        self._check_date()
+
+    def set_end_date(self, end_date: str) -> None:
+        self.end_date = end_date
+        self._check_date()
+
+    def set_benchmark(self, benchmark: str) -> None:
+        self.benchmark = benchmark
+
+        # rerun the backtest
+        self.run()
+
+    def set_benchmark_to_buy_and_hold(self) -> None:
+        self.benchmark = 'Price'
+
+    # -------- Error Check --------
+    def _strategy_is_buy_and_hold(self) -> bool:
+        return self.df['Benchmark'].equals(self.df['Value'])
+
+    def _check_date(self) -> None:
+        if self.start_date > self.end_date:
+            raise ValueError('Error: start_date > end_date')
+
+        if self.start_date < self.df.index[0]:
+            self.start_date = self.df.index[0]
+
+        if self.end_date > self.df.index[-1]:
+            self.end_date = self.df.index[-1]
 
 
     """

@@ -23,28 +23,57 @@ class Strategies:
 
     def run(self) -> Backtest:
         results_df = pd.DataFrame()
-        results_df['Value'] = self.get_price()
+        results_df['Price'] = self.get_price()
+        results_df['Value'] = self.get_value()
         results_df['Return'] = self.get_return()
         # TODO: Need to find a way to let users customise the start, end date, risk-free rate & benchmark
         return Backtest(results_df, results_df.index.iloc[0], results_df.index.iloc[-1])
 
     def get_price(self) -> pd.Series:
+        """
+        asset price
+        :return:
+        """
         pass
 
     def get_return(self) -> pd.Series:
+        """
+        buy & hold return
+        :return:
+        """
+        return self.get_price().pct_change()
+
+    def buy_and_hold_value(self) -> pd.Series:
+        # TODO: lets say buy the stock twice at different time, need to count in the second transaction to the benchmark
         pass
 
+    def get_value(self) -> pd.Series:
+        # TODO: Actually I'm not sure, only use this function when you buy sell hold once
+        """
+        strategy value according to the asset value
+        :return:
+        """
+        return self.get_cumulative_return() * self.get_price()
+
     def get_signal(self) -> pd.Series:
+        """
+        when to buy or sell or hold at the time
+        :return:
+        """
         pass
 
     def get_position(self) -> pd.Series:
+        """
+        whether long or short at the time
+        :return:
+        """
         return self.get_signal().shift(1).fillna(0)
 
     def get_strategy_return(self) -> pd.Series:
         return self.get_return() * self.get_position()
 
     def get_cumulative_return(self) -> pd.Series:
-        return (1 + self.get_strategy_return()).cumprod()
+        return np.cumprod(1 + self.get_return())
 
 
 def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:

@@ -61,6 +61,10 @@ class Portfolio:
 
         # need to check column format
 
+    def get_portoflio_returns(self):
+        # pass the portfolio returns as a pd.Series
+        pass
+
 
 if __name__ == '__main__':
     df = yf.download(tickers=['AAPL', 'MSFT', 'AMZN', 'SPY'], start='2020-01-01')

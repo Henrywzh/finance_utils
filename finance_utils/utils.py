@@ -9,14 +9,10 @@ import seaborn as sns
 """
 functions for all of below:
 
-rolling: [downside beta, upside beta, beta, alpha, ***
+rolling: [downside beta, upside beta,
           downside volatility, upside volatility, volatility skewness = upside var / downside var, 
           returns skewness & kurtosis, -> just use skew() & kurt()
-          volatility, returns, prices, ***
-          sharpe ratio, **
-          sortino ratio, **
-          var95, var99, cvar95, cvar99, -> require returns ***
-          annualised returns(geo + ari)]
+          ]
           
           ---- IMPORTANT ----
           For rolling data, just input the data with restricted range
