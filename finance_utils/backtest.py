@@ -104,6 +104,10 @@ class Backtest:
 
     # -------- Visualisation --------
     def plot(self) -> None:
+        """
+        the main plot function
+        :return:
+        """
         self.plot_cumulative_returns()
         self.plot_drawdown()
         self.plot_volatility()

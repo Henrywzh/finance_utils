@@ -1,5 +1,6 @@
 import pandas as pd
 import yfinance as yf
+import datetime
 
 
 """
@@ -31,22 +32,32 @@ class Strategy: (abstract class?)
 class Portfolio:
     def __init__(
             self,
-            df: pd.DataFrame = None,
-            benchmark: str = None,
+            cash: int | float,
             start_date: str = None,
-            end_date: str = None
+            end_date: str = None,
+            benchmark: str = None,
             ):
-        """"
-        :param df: contains tickers & benchmark data
+        """
+        :param cash:
+        :param start_date:
+        :param end_date:
         :param benchmark:
         """
-        self.start_date = '2020-01-01' if start_date is None else start_date
-        self.end_date = '2024-07-01' if end_date is None else end_date
-        self.df = df
-        # TODO: Check df format
-        self.tickers = []
-        self.benchmark = benchmark
-        self.weights = []
+        # -- format check ---
+        if cash < 10000:
+            raise ValueError("Please enter cash amount >= 10_000")
+
+        if start_date > end_date:
+            raise ValueError('start_date should be less than end_date')
+
+        # -- initialisation --
+        self.df = pd.DataFrame()
+        self.asset_values = {'Cash': cash}
+        self.tickers = ['Cash']
+        self.benchmark = 'Price' if benchmark is None else benchmark
+        self.weights = {'Cash': 1}
+        self.start_date = str(start_date) if start_date else '2020-01-01'
+        self.end_date = datetime.datetime.now() if end_date is None else end_date
 
     def set_start_date(self, start_date: str):
         self.start_date = start_date
@@ -64,6 +75,10 @@ class Portfolio:
     def get_portoflio_returns(self):
         # pass the portfolio returns as a pd.Series
         pass
+
+    def _check_weights(self) -> bool:
+        return sum(self.weights.values()) == 1
+
 
 
 if __name__ == '__main__':

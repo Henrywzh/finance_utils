@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from backtest import Backtest
 
 
@@ -8,6 +9,7 @@ class Strategies:
     def __init__(self):
         self.benchmark: str = 'Adj Close'
         self.df: pd.DataFrame = pd.DataFrame()
+        self.results_df: pd.DataFrame = pd.DataFrame()
         self.cash: float = 10_000
 
     def feed_data(self, df: pd.DataFrame) -> None:
@@ -21,13 +23,15 @@ class Strategies:
     def set_benchmark(self, benchmark: str) -> None:
         self.benchmark = benchmark
 
-    def run(self) -> Backtest:
-        results_df = pd.DataFrame()
-        results_df['Price'] = self.get_price()
-        results_df['Value'] = self.get_value()
-        results_df['Return'] = self.get_return()
+    def run(self) -> pd.DataFrame:
+        self.results_df['Price'] = self.get_price()
+        self.results_df['Value'] = self.get_value()
+        self.results_df['Return'] = self.get_return()
+
+        self.plot()
+
         # TODO: Need to find a way to let users customise the start, end date, risk-free rate & benchmark
-        return Backtest(results_df, results_df.index.iloc[0], results_df.index.iloc[-1])
+        return self.results_df.copy()
 
     def get_price(self) -> pd.Series:
         """
@@ -74,6 +78,33 @@ class Strategies:
 
     def get_cumulative_return(self) -> pd.Series:
         return np.cumprod(1 + self.get_return())
+
+    # ---- Visualisation ----
+    def plot(self) -> None:
+        # Plot the price data with buy and sell signals
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.plot(self.get_price(), label='Price')
+
+        signals = self.get_signal()
+
+        # Plotting buy signals
+        ax.plot(
+            signals.loc[signals == 1.0].index, signals[signals == 1.0],
+            '^', markersize=10, color='g', label='Buy Signal'
+        )
+
+        # Plotting sell signals
+        ax.plot(
+            signals.loc[signals == -1.0].index, signals[signals == -1.0],
+            'v', markersize=10, color='r', label='Sell Signal'
+        )
+
+        plt.title('Strategy')
+        plt.xlabel('Date')
+        plt.ylabel('Price')
+        plt.legend()
+        plt.show()
 
 
 def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
