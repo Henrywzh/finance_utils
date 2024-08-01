@@ -52,10 +52,10 @@ class Portfolio:
 
         # -- initialisation --
         self.df = pd.DataFrame()
-        self.asset_values = {'Cash': cash}
+        self.asset_values = {'Cash': cash}  # (key) asset, (value) asset value
         self.tickers = ['Cash']
         self.benchmark = 'Price' if benchmark is None else benchmark
-        self.weights = {'Cash': 1}
+        self.weights = {'Cash': 1}  # sum of weights == 1
         self.start_date = str(start_date) if start_date else '2020-01-01'
         self.end_date = datetime.datetime.now() if end_date is None else end_date
 
@@ -80,9 +80,8 @@ class Portfolio:
         return sum(self.weights.values()) == 1
 
 
-
 if __name__ == '__main__':
     df = yf.download(tickers=['AAPL', 'MSFT', 'AMZN', 'SPY'], start='2020-01-01')
-    p = Portfolio(df, 'SPY')
+    p = Portfolio(df)
     print(df)
 

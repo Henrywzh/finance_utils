@@ -1,20 +1,29 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from backtest import Backtest
+from abc import ABC, abstractmethod
 
 
-# TODO: Need to make this an abstract class
-class Strategies:
+class Strategy(ABC):
     def __init__(self):
         self.benchmark: str = 'Adj Close'
         self.df: pd.DataFrame = pd.DataFrame()
         self.results_df: pd.DataFrame = pd.DataFrame()
         self.cash: float = 10_000
 
-    def feed_data(self, df: pd.DataFrame) -> None:
-        self.df = df
+    @abstractmethod
+    def __str__(self):
+        pass
 
+    @abstractmethod
+    def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        need to perform format check with the df
+        :return: a pandas dataframe containing necessary data, eg Adj Close, Signal
+        """
+        pass
+
+    # ---- not in use right now ----
     def feed_cash(self, cash: float | int) -> None:
         if cash < 1000:
             raise ValueError('Cash must be greater than 1000')
@@ -23,7 +32,10 @@ class Strategies:
     def set_benchmark(self, benchmark: str) -> None:
         self.benchmark = benchmark
 
-    def run(self) -> pd.DataFrame:
+    # ---- in use ----
+    def feed_data_and_run(self, df: pd.DataFrame) -> pd.DataFrame:
+        self.df = self.feed_data(df)
+
         self.results_df['Price'] = self.get_price()
         self.results_df['Value'] = self.get_value()
         self.results_df['Return'] = self.get_return()
@@ -36,9 +48,10 @@ class Strategies:
     def get_price(self) -> pd.Series:
         """
         asset price
-        :return:
+        assumes df contains 'Adj Close' or 'Close'
+        :return: The asset price series
         """
-        pass
+        return self.df['Adj Close'] if 'Adj Close' in self.df.columns else self.df['Close']
 
     def get_return(self) -> pd.Series:
         """
@@ -49,7 +62,8 @@ class Strategies:
 
     def buy_and_hold_value(self) -> pd.Series:
         # TODO: lets say buy the stock twice at different time, need to count in the second transaction to the benchmark
-        pass
+        # Just overwrite this if necessary
+        return self.get_price().iloc[-1] / self.get_value().iloc[0]
 
     def get_value(self) -> pd.Series:
         # TODO: Actually I'm not sure, only use this function when you buy sell hold once
@@ -62,9 +76,10 @@ class Strategies:
     def get_signal(self) -> pd.Series:
         """
         when to buy or sell or hold at the time
+        assumes df contains 'Signal'
         :return:
         """
-        pass
+        return self.df['Signal']
 
     def get_position(self) -> pd.Series:
         """
@@ -81,6 +96,18 @@ class Strategies:
 
     # ---- Visualisation ----
     def plot(self) -> None:
+        """
+        the main plot functions, do not overwrite
+        :return:
+        """
+        self.plot_graph()
+        self.plot_show()
+
+    def plot_graph(self) -> None:
+        """
+        overwrite this function if needed
+        :return:
+        """
         # Plot the price data with buy and sell signals
         fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -100,7 +127,8 @@ class Strategies:
             'v', markersize=10, color='r', label='Sell Signal'
         )
 
-        plt.title('Strategy')
+    def plot_show(self) -> None:
+        plt.title(f'Strategy: {self}')
         plt.xlabel('Date')
         plt.ylabel('Price')
         plt.legend()
@@ -175,3 +203,49 @@ def buy_and_hold(df_prev: pd.DataFrame, ticker_name: str = None) -> pd.DataFrame
     _df['Cumulative Return'] = (1 + _df['Strategy Return']).cumprod()
 
     return _df
+
+
+class MovingAverageCrossOver(Strategy):
+    def __str__(self):
+        return 'moving_average_crossover'
+
+    def __init__(self, fast: int, slow: int):
+        super().__init__()
+
+        # -- format check --
+        if fast > slow:
+            raise ValueError('Fast should be smaller than Slow')
+        if fast < 1:
+            raise ValueError('Ensure that Fast > 0')
+
+        self.fast: int = fast
+        self.slow: int = slow
+
+    def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        :param df: df containing Adj Close or Close price
+        :return:
+        """
+        # -- format check --
+        name: str = ''
+        if 'Adj Close' in df.columns:
+            name = 'Adj Close'
+        elif 'Close' in df.columns:
+            name = 'Close'
+            print('Adj Close not found. Using Close price instead of Adj Close.')
+        else:
+            raise ValueError('Please ensure that the columns contain Adj Close or Close.')
+
+        # -- feed data --
+        df['Fast'] = df[f'{name}'].rolling(self.fast).mean()
+        df['Slow'] = df[f'{name}'].rolling(self.slow).mean()
+
+        # fill na with 0, if fast MA > slow MA, signal = 1, else -1
+        df['Signal'] = np.where(self.df['Fast'].isna(), 0, np.where(self.df['Slow'] < self.df['Fast'], 1, -1))
+
+        return df
+
+    def plot_graph(self) -> None:
+        super().plot_graph()
+        plt.plot(self.df['Fast'], color='r', label='Fast')
+        plt.plot(self.df['Slow'], color='g', label='Slow')
