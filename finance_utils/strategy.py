@@ -11,6 +11,9 @@ class Strategy(ABC):
         self.results_df: pd.DataFrame = pd.DataFrame()
         self.cash: float = 10_000
 
+        print('Feed data with columns containing "Adj Close" or "Close"')
+        print('Then, call feed_data_and_run()')
+
     @abstractmethod
     def __str__(self):
         pass
@@ -51,7 +54,7 @@ class Strategy(ABC):
         assumes df contains 'Adj Close' or 'Close'
         :return: The asset price series
         """
-        return self.df['Adj Close'] if 'Adj Close' in self.df.columns else self.df['Close']
+        return self.df[self.benchmark]
 
     def get_return(self) -> pd.Series:
         """
@@ -113,18 +116,16 @@ class Strategy(ABC):
 
         ax.plot(self.get_price(), label='Price')
 
-        signals = self.get_signal()
-
         # Plotting buy signals
         ax.plot(
-            signals.loc[signals == 1.0].index, signals[signals == 1.0],
-            '^', markersize=10, color='g', label='Buy Signal'
-        )
+            self.df[self.df['Signal'].diff() >= 1].index, self.df[self.df['Signal'].diff() >= 1][self.benchmark],
+            '^', color='g', label='Buy Signal'
+        )  # , markersize=10
 
         # Plotting sell signals
         ax.plot(
-            signals.loc[signals == -1.0].index, signals[signals == -1.0],
-            'v', markersize=10, color='r', label='Sell Signal'
+            self.df[self.df['Signal'].diff() <= -1].index, self.df[self.df['Signal'].diff() <= -1][self.benchmark],
+            'v', color='r', label='Sell Signal'
         )
 
     def plot_show(self) -> None:
@@ -209,7 +210,7 @@ class MovingAverageCrossOver(Strategy):
     def __str__(self):
         return 'moving_average_crossover'
 
-    def __init__(self, fast: int, slow: int):
+    def __init__(self, fast: int = 10, slow: int = 50):
         super().__init__()
 
         # -- format check --
@@ -227,25 +228,25 @@ class MovingAverageCrossOver(Strategy):
         :return:
         """
         # -- format check --
-        name: str = ''
         if 'Adj Close' in df.columns:
-            name = 'Adj Close'
+            self.benchmark = 'Adj Close'
         elif 'Close' in df.columns:
-            name = 'Close'
+            self.benchmark = 'Close'
             print('Adj Close not found. Using Close price instead of Adj Close.')
         else:
             raise ValueError('Please ensure that the columns contain Adj Close or Close.')
 
         # -- feed data --
-        df['Fast'] = df[f'{name}'].rolling(self.fast).mean()
-        df['Slow'] = df[f'{name}'].rolling(self.slow).mean()
+        df = df.copy()
+        df['Fast'] = df[f'{self.benchmark}'].rolling(self.fast).mean()
+        df['Slow'] = df[f'{self.benchmark}'].rolling(self.slow).mean()
 
         # fill na with 0, if fast MA > slow MA, signal = 1, else -1
-        df['Signal'] = np.where(self.df['Fast'].isna(), 0, np.where(self.df['Slow'] < self.df['Fast'], 1, -1))
+        df['Signal'] = np.where(df['Fast'].isna(), 0, np.where(df['Slow'] < df['Fast'], 1, -1))
 
         return df
 
     def plot_graph(self) -> None:
         super().plot_graph()
-        plt.plot(self.df['Fast'], color='r', label='Fast')
-        plt.plot(self.df['Slow'], color='g', label='Slow')
+        plt.plot(self.df['Fast'], color='y', label='Fast')
+        plt.plot(self.df['Slow'], color='purple', label='Slow')
