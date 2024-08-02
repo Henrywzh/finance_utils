@@ -38,15 +38,24 @@ class Strategy(ABC):
     # ---- in use ----
     def feed_data_and_run(self, df: pd.DataFrame) -> pd.DataFrame:
         self.df = self.feed_data(df)
+        self.df['Position'] = self.get_position()
 
-        self.results_df['Price'] = self.get_price()
-        self.results_df['Value'] = self.get_value()
-        self.results_df['Return'] = self.get_return()
+        self.results_df['Price'] = self.get_price()  # asset price
+        self.results_df['Value'] = self.get_strategy_value()  # strategy value according to the price
+
+        self.results_df['Buy & Hold Return'] = self.get_return()
+        self.results_df['Return'] = self.get_strategy_return()  # strategy return
+
+        self.results_df['Cumulative Return'] = self.get_cumulative_return()
+        self.results_df['Strategy Cumulative Return'] = self.get_strategy_cumulative_return()
 
         self.plot()
 
-        # TODO: Need to find a way to let users customise the start, end date, risk-free rate & benchmark
         return self.results_df.copy()
+
+    # ---- connect wth backtest ----
+    def pass_df_to_backtest(self) -> pd.DataFrame:
+        return self.results_df[['Value', 'Return', 'Price']]
 
     def get_price(self) -> pd.Series:
         """
@@ -63,18 +72,20 @@ class Strategy(ABC):
         """
         return self.get_price().pct_change()
 
-    def buy_and_hold_value(self) -> pd.Series:
-        # TODO: lets say buy the stock twice at different time, need to count in the second transaction to the benchmark
-        # Just overwrite this if necessary
-        return self.get_price().iloc[-1] / self.get_value().iloc[0]
-
-    def get_value(self) -> pd.Series:
+    def get_strategy_value(self) -> pd.Series:
         # TODO: Actually I'm not sure, only use this function when you buy sell hold once
         """
-        strategy value according to the asset value
+        buy and hold value according to the asset value
         :return:
         """
-        return self.get_cumulative_return() * self.get_price()
+        temp_df = pd.DataFrame()
+        temp_df['Position'] = self.get_position()
+        temp_df['Value'] = np.where(
+            temp_df['Position'] == 0, self.get_price().iloc[0],
+            self.get_strategy_cumulative_return() * self.get_price().iloc[0]
+        )
+
+        return temp_df['Value']
 
     def get_signal(self) -> pd.Series:
         """
@@ -97,6 +108,9 @@ class Strategy(ABC):
     def get_cumulative_return(self) -> pd.Series:
         return np.cumprod(1 + self.get_return())
 
+    def get_strategy_cumulative_return(self) -> pd.Series:
+        return np.cumprod(1 + self.get_strategy_return())
+
     # ---- Visualisation ----
     def plot(self) -> None:
         """
@@ -105,6 +119,8 @@ class Strategy(ABC):
         """
         self.plot_graph()
         self.plot_show()
+
+        self.plot_cumulative_return()
 
     def plot_graph(self) -> None:
         """
@@ -128,10 +144,18 @@ class Strategy(ABC):
             'v', color='r', label='Sell Signal'
         )
 
+    def plot_cumulative_return(self) -> None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.plot(self.results_df['Cumulative Return'], label='Buy & Hold Cumulative Return')
+        ax.plot(self.results_df['Strategy Cumulative Return'], label='Strategy Cumulative Return')
+
+        self.plot_show()
+
     def plot_show(self) -> None:
         plt.title(f'Strategy: {self}')
         plt.xlabel('Date')
-        plt.ylabel('Price')
+        plt.ylabel('Value')
         plt.legend()
         plt.show()
 
@@ -242,7 +266,7 @@ class MovingAverageCrossOver(Strategy):
         df['Slow'] = df[f'{self.benchmark}'].rolling(self.slow).mean()
 
         # fill na with 0, if fast MA > slow MA, signal = 1, else -1
-        df['Signal'] = np.where(df['Fast'].isna(), 0, np.where(df['Slow'] < df['Fast'], 1, -1))
+        df['Signal'] = np.where(df['Slow'].isna(), 0, np.where(df['Slow'] < df['Fast'], 1, -1))
 
         return df
 

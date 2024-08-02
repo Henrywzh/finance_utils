@@ -44,7 +44,7 @@ class Backtest:
 
     # -------- The main function --------
     def run(self) -> None:  # run the backtest
-        print("Running the backtest...")
+        print("---- Running the backtest... ----\n")
 
         # -- clean all stuff first --
         self.reset()
@@ -82,7 +82,7 @@ class Backtest:
         if not self._strategy_is_buy_and_hold():
             self._add_strategy_results()
 
-        print("Backtesting completed")
+        print("---- Backtesting completed ----\n")
         self._print_results()
         self.plot()
 
@@ -161,7 +161,7 @@ class Backtest:
         columns = self.df.columns.tolist()[3:]  # removes all the columns besides from (Price, Value, Return)
         self.df = self.df.drop(columns=columns)
         self.set_benchmark_to_buy_and_hold()
-        print("df & results cleaned, benchmark set to buy & hold")
+        print("---- df & results cleaned, benchmark set to buy & hold ----\n")
 
     def _get_benchmark(self) -> pd.Series:
         if self.benchmark == 'Price':
