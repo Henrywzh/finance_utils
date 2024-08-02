@@ -43,8 +43,9 @@ class Backtest:
         self.run()
 
     # -------- The main function --------
-    def run(self) -> None:  # run the backtest
-        print("---- Running the backtest... ----\n")
+    def run(self, visualise: bool = True) -> None:  # run the backtest
+        if visualise:
+            print("---- Running the backtest... ----\n")
 
         # -- clean all stuff first --
         self.reset()
@@ -82,9 +83,10 @@ class Backtest:
         if not self._strategy_is_buy_and_hold():
             self._add_strategy_results()
 
-        print("---- Backtesting completed ----\n")
-        self._print_results()
-        self.plot()
+        if visualise:
+            print("---- Backtesting completed ----\n")
+            self._print_results()
+            self.plot()
 
     def _add_strategy_results(self) -> None:
         """
@@ -125,7 +127,7 @@ class Backtest:
 
     def plot_drawdown(self) -> None:
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(self.df['Drawdown'] * 100)
+        ax.plot(self.df['Drawdown'] * 100, label='Drawdown')
         ax.set(xlabel='Date', ylabel='Drawdown (%)', title='Drawdown')
         plt.legend(loc='best')
         plt.show()
@@ -134,7 +136,7 @@ class Backtest:
         vol_df = self.rolling_volatility(rolling_window)
 
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(vol_df)
+        ax.plot(vol_df, label='Volatility')
         ax.set(xlabel='Date', ylabel='Volatility (%)', title=f'{rolling_window}-day Volatility')
         plt.legend(loc='best')
         plt.show()
@@ -156,12 +158,14 @@ class Backtest:
             print(f'{key}: {self.results[key]}')
 
     # -------- Reset parameters --------
-    def reset(self) -> None:
+    def reset(self, comments_on: bool = False) -> None:
         self.results = dict()
         columns = self.df.columns.tolist()[3:]  # removes all the columns besides from (Price, Value, Return)
         self.df = self.df.drop(columns=columns)
         self.set_benchmark_to_buy_and_hold()
-        print("---- df & results cleaned, benchmark set to buy & hold ----\n")
+
+        if comments_on:
+            print("---- df & results cleaned, benchmark set to buy & hold ----\n")
 
     def _get_benchmark(self) -> pd.Series:
         if self.benchmark == 'Price':
@@ -313,7 +317,7 @@ class Backtest:
         if self.end_date > self.df.index[-1]:
             self.end_date = self.df.index[-1]
 
-
+    # TODO: Add the below indicators
     """
     peak, drawdown, avg drawdown, max drawdown, **
     calmar ratio, sterling ratio, ***

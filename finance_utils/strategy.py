@@ -111,6 +111,11 @@ class Strategy(ABC):
     def get_strategy_cumulative_return(self) -> pd.Series:
         return np.cumprod(1 + self.get_strategy_return())
 
+    # ---- strategy optimisation ----
+    @abstractmethod
+    def optimise(self) -> None:
+        pass
+
     # ---- Visualisation ----
     def plot(self) -> None:
         """
@@ -269,6 +274,12 @@ class MovingAverageCrossOver(Strategy):
         df['Signal'] = np.where(df['Slow'].isna(), 0, np.where(df['Slow'] < df['Fast'], 1, -1))
 
         return df
+
+    def optimise(self) -> None:
+        best_fast: int = 1
+        best_slow: int = 2
+        # TODO: Finish optimisation
+        print(f'Best params:\nFast: {best_fast} Slow: {best_slow}')
 
     def plot_graph(self) -> None:
         super().plot_graph()
