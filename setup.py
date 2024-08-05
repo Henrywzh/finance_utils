@@ -1,15 +1,15 @@
 from setuptools import setup
 
 setup(
-    name='utilities',
-    version='0.1.2',
+    name='finance_utils',
+    version='0.1.3',
 
     url='https://github.com/Henrywzh/finance_utils',
     author='Henry Wu',
     author_email='hernywzh88@gmail.com',
 
     install_requires=[
-        'numpy', 'pandas', 'matplotlib', 'seaborn'
+        'numpy', 'pandas', 'matplotlib', 'seaborn', 'yfinance'
     ],
     packages=['finance_utils'],
 
