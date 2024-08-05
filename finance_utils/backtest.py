@@ -1,3 +1,5 @@
+import pandas as pd
+
 from .utils import *
 import yfinance as yf
 
@@ -63,10 +65,10 @@ class Backtest:
         self.results['Downside Volatility'] = self.downside_volatility()
         self.results['Sortino Ratio'] = self.sortino_ratio()
 
-        self.results['VaR 95'] = self.value_at_risk(alpha=95)
-        self.results['VaR 99'] = self.value_at_risk(alpha=99)
-        self.results['CVaR 95'] = self.conditional_VaR(alpha=95)
-        self.results['CVaR 99'] = self.conditional_VaR(alpha=99)
+        self.results['VaR 99'] = self.value_at_risk(self.df['Return'], alpha=99)
+        self.results['VaR 99 (Year)'] = self.conditional_VaR(self.calendar_year_return(), alpha=99)
+        self.results['CVaR 99'] = self.conditional_VaR(self.df['Return'], alpha=99)
+        self.results['CVaR 99 (Year)'] = self.conditional_VaR(self.calendar_year_return(), alpha=99)
 
         self.results['Initial Value'] = self.initial_value()
         self.results['Peak Value'] = self.peak_value()
@@ -235,11 +237,11 @@ class Backtest:
     def sortino_ratio(self) -> float:
         return get_sortino_ratio(self.df['Return'], self.r_f)
 
-    def value_at_risk(self, alpha: float | int = 99, lookback_days: int = None) -> float:
-        return get_VaR(self.df['Return'], alpha, lookback_days)
+    def value_at_risk(self, _df: pd.Series, alpha: float | int = 99, lookback_days: int = None) -> float:
+        return get_VaR(_df, alpha, lookback_days)
 
-    def conditional_VaR(self, alpha: float | int = 99, lookback_days: int = None) -> float:
-        return get_CVaR(self.df['Return'], alpha, lookback_days)
+    def conditional_VaR(self, _df: pd.Series, alpha: float | int = 99, lookback_days: int = None) -> float:
+        return get_CVaR(_df, alpha, lookback_days)
 
     def alpha_beta_r(self) -> (float, float, float):
         returns = self.df['Return'].dropna(axis=0)
@@ -274,10 +276,10 @@ class Backtest:
         return self.df['Value'] / peaks - 1
 
     def calendar_month_return(self) -> pd.Series:
-        return monthly_return(self.df['Price'])
+        return monthly_return(self.df['Value'])
 
     def calendar_year_return(self) -> pd.Series:
-        return yearly_return(self.df['Price'])
+        return yearly_return(self.df['Value'])
 
     def calendar_month_volatility(self) -> pd.Series:
         return monthly_volatility(self.df['Return'])

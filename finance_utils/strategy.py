@@ -26,18 +26,30 @@ class Strategy(ABC):
         """
         pass
 
+    @abstractmethod
+    def calculate_signal(self) -> list:
+        """
+        calculate signals
+        :return:
+        """
+        pass
+
     # ---- not in use right now ----
     def feed_cash(self, cash: float | int) -> None:
         if cash < 1000:
             raise ValueError('Cash must be greater than 1000')
         self.cash = cash
 
-    def set_benchmark(self, benchmark: str) -> None:
-        self.benchmark = benchmark
+    def check_data(self, col_names: list) -> None:
+        for col_name in col_names:
+            if col_name not in self.df.columns:
+                raise ValueError(f'{col_name} not in self.df')
 
     # ---- in use ----
     def feed_data_and_run(self, df: pd.DataFrame) -> pd.DataFrame:
         self.df = self.feed_data(df)
+        self.df['Signal'] = self.calculate_signal()
+
         self.df['Position'] = self.get_position()
 
         self.results_df['Price'] = self.get_price()  # asset price
@@ -251,7 +263,28 @@ class MovingAverageCrossOver(Strategy):
         self.fast: int = fast
         self.slow: int = slow
 
+    def calculate_signal(self) -> list:
+        # fill na with 0, if fast MA > slow MA, signal = 1, else -1
+        signals = []
+        be4_first_trend: bool = True
+
+        for i in range(self.df.shape[0]):
+            up_trend: bool = self.df['Slow'].iloc[i] < self.df['Fast'].iloc[i]
+            prev_down: bool = self.df['Slow'].iloc[i - 1] >= self.df['Fast'].iloc[i - 1]
+
+            if up_trend and prev_down:
+                be4_first_trend = False
+
+            if be4_first_trend:
+                signals.append(0)
+                continue
+
+            signals.append(1 if up_trend else -1)
+
+        return signals
+
     def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Create necessary data to calculate signals
         """
         :param df: df containing Adj Close or Close price
         :return:
@@ -270,9 +303,6 @@ class MovingAverageCrossOver(Strategy):
         df['Fast'] = df[f'{self.benchmark}'].rolling(self.fast).mean()
         df['Slow'] = df[f'{self.benchmark}'].rolling(self.slow).mean()
 
-        # fill na with 0, if fast MA > slow MA, signal = 1, else -1
-        df['Signal'] = np.where(df['Slow'].isna(), 0, np.where(df['Slow'] < df['Fast'], 1, -1))
-
         return df
 
     def optimise(self) -> None:
@@ -285,3 +315,12 @@ class MovingAverageCrossOver(Strategy):
         super().plot_graph()
         plt.plot(self.df['Fast'], color='y', label='Fast')
         plt.plot(self.df['Slow'], color='purple', label='Slow')
+
+
+class EmaCrossover(MovingAverageCrossOver):
+    def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        df['Fast'] = df[f'{self.benchmark}'].ewm(span=self.fast, adjust=False).mean()
+        df['Slow'] = df[f'{self.benchmark}'].ewm(span=self.slow, adjust=False).mean()
+
+        return df

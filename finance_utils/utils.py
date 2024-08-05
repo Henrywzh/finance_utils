@@ -153,7 +153,13 @@ def yearly_return(df: pd.Series) -> pd.Series:
     :param df: pd.Series, the price of the stock
     :return: pd.Series, the yearly return of the stock
     """
-    yearly = (df.resample('YE').last() - df.resample('YE').first()) / df.resample('YE').first()
+    try:
+        yearly = (df.resample('YE').last() - df.resample('YE').first()) / df.resample('YE').first()
+    except:
+        try:
+            yearly = (df.resample('Y').last() - df.resample('Y').first()) / df.resample('Y').first()
+        except:
+            raise ValueError('Error with the sample freq')
 
     return yearly.rename("Yearly Return")
 
