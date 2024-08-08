@@ -8,6 +8,7 @@ class Backtest:
     def __init__(
             self,
             data: pd.DataFrame,
+            visualise: bool = True,
             start_date: str = None,
             end_date: str = None,
             benchmark: str = None,
@@ -20,6 +21,7 @@ class Backtest:
         :param benchmark:
         :param r_f:
         """
+        # TODO: Sliding Backtest Windows
 
         # -- format check --
         if 'Value' not in data.columns or 'Return' not in data.columns or 'Price' not in data.columns:
@@ -42,7 +44,7 @@ class Backtest:
         self.end_date = end_date
         self.results = dict()  # contains all the single result values, eg max drawdown...
 
-        self.run()
+        self.run(visualise=visualise)
 
     # -------- The main function --------
     def run(self, visualise: bool = True) -> None:  # run the backtest
@@ -81,6 +83,7 @@ class Backtest:
         self.results['Monthly Return'] = self.calendar_month_return()
         self.results['Yearly Return'] = self.calendar_year_return()
         self.results['Monthly Volatility'] = self.calendar_month_volatility()
+        self.results['Monthly Stats'] = get_monthly_stats(self.results['Monthly Return'])
 
         if not self._strategy_is_buy_and_hold():
             self._add_strategy_results()
@@ -117,7 +120,7 @@ class Backtest:
         self.plot_volatility()
         self.plot_monthly_return()
         self.plot_yearly_return()
-        self.plot_monthly_volatility()
+        # self.plot_monthly_volatility()
 
     def plot_cumulative_returns(self) -> None:
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -147,14 +150,37 @@ class Backtest:
         plot_heatmap(self.results['Monthly Return'])
 
     def plot_yearly_return(self) -> None:
-        plot_yearly_return(self.results['Yearly Return'])
+        # plot_yearly_return(self.results['Yearly Return'])
+
+        # -- format check --
+        _yearly_return = round(100 * self.results['Yearly Return'], 2)
+        _buy_hold_yearly_return = round(100 * yearly_return(self.df['Price']), 2)
+
+        # -- plotting --
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+
+        bars_strategy = ax.bar(_yearly_return.index.year, _yearly_return, label='Strategy')
+        ax.bar_label(bars_strategy)
+        bars_buy_hold = ax.bar(_yearly_return.index.year, _buy_hold_yearly_return, label='Buy & Hold')
+        ax.bar_label(bars_buy_hold)
+
+        ax.set(xlabel='Year', ylabel='Return', title='Yearly Return (%)')
+        ax.legend(loc='best', ncols=2)
+
+        plt.show()
+
+
 
     def plot_monthly_volatility(self) -> None:
         plot_heatmap(self.results['Monthly Volatility'])
 
     def _print_results(self) -> None:
         for key in self.results:
-            if isinstance(self.results[key], pd.Series) or isinstance(self.results[key], pd.DataFrame):
+            if key == 'Monthly Stats':
+                print(f'{key}: \n{self.results[key]}')
+                continue
+            elif isinstance(self.results[key], pd.Series) or isinstance(self.results[key], pd.DataFrame):
                 continue
 
             print(f'{key}: {self.results[key]}')

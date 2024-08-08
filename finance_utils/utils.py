@@ -119,6 +119,54 @@ def monthly_return(df: pd.Series) -> pd.Series:
     return monthly.rename("Monthly Return")
 
 
+def get_monthly_stats(returns: pd.Series) -> pd.DataFrame:
+    monthly_df = pd.DataFrame(returns.copy())
+
+    # ---- return ----
+    def q1(x):
+        return x.quantile(0.25)
+
+    def q3(x):
+        return x.quantile(0.75)
+
+    f = {'Monthly Return': ['mean', 'std', 'median', q1, q3, 'max', 'min']}
+    monthly_stats = monthly_df.groupby(monthly_df.index.month).agg(f)
+    monthly_stats.index.name = 'Month'
+    monthly_stats.columns = ['mean', 'std', 'median', 'q1', 'q3', 'max', 'min']
+    monthly_stats = monthly_stats * 100
+
+    return monthly_stats
+
+
+def plot_monthly_box(df: pd.Series) -> None:
+    dfs = [_df for _df in df.groupby(df.index.month)]
+    array_of_df = []
+
+    vals, names, xs = [], [], []
+
+    for _df in dfs:
+        new_df: pd.Series = _df[1] * 100
+        new_df.name = str(_df[0])
+        vals.append(new_df.values.tolist())
+        names.append(new_df.name)
+        xs.append([int(new_df.name) for i in range(len(new_df.index))])
+
+    all_mean = df.mean()
+
+    fig, ax = plt.subplots(figsize=(12, 9))
+    plt.plot([i + 1 for i in range(12)], [all_mean for i in range(12)], alpha=0.2
+             , linestyle='--', color='grey', label='mean')
+    plt.boxplot(vals, tick_labels=names)
+    for x, val in zip(xs, vals):
+        plt.scatter(x, val, alpha=0.4)
+
+    plt.title('Monthly Analysis')
+    plt.xlabel('Month')
+    plt.ylabel('%')
+    plt.legend()
+    plt.show()
+
+
 def plot_heatmap(_monthly_df: pd.Series, annot: bool = True):
     """
     :param annot:
@@ -141,7 +189,7 @@ def plot_heatmap(_monthly_df: pd.Series, annot: bool = True):
 
     # -- drawing the heatmap --
     result = _df.pivot(index='Year', columns='Month', values=_monthly_df.name)
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     ax = sns.heatmap(result, linewidths=0.30, annot=annot, center=0)
     plt.title(f"{_monthly_df.name} (%)")
@@ -248,23 +296,3 @@ def percent_to_num(x):  # converts returns to num
 def num_to_percent(x):
     return 100 * percent_to_num(x)
 
-
-# ---- stats ----
-def mean(x):
-    return np.mean(x)
-
-
-def var(x):
-    return np.var(x, ddof=1)
-
-
-def std(x):
-    return np.std(x, ddof=1)
-
-
-def skew(x):
-    return stats.skew(x)
-
-
-def kert(x):
-    return stats.kurtosis(x)
