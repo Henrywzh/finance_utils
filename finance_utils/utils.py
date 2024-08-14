@@ -38,11 +38,16 @@ TRADING_QUARTER: int = 4
 
 
 # assumes we have a dataframe of returns:
-def get_alpha_beta(returns: pd.Series, benchmark: str = 'SPY') -> (float, float, float):
+def get_alpha_beta(returns: pd.Series, benchmark: str = 'SPY', benchmark_df=None) -> (float, float, float):
     start_date = returns.index[0]
     end_date = returns.index[-1]
-    benchmark_p = yf.download(benchmark, start=start_date, end=end_date)
-    beta, alpha, r, _, _ = stats.linregress(returns, benchmark_p['Adj Close'].pct_change())
+
+    if benchmark_df is None:
+        benchmark_p = yf.download(benchmark, start=start_date, end=end_date)
+        beta, alpha, r, _, _ = stats.linregress(returns, benchmark_p['Adj Close'].pct_change())
+    else:
+        beta, alpha, r, _, _ = stats.linregress(returns, benchmark_df.pct_change())
+
     return alpha, beta, r
 
 

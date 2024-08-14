@@ -83,7 +83,7 @@ class Backtest:
         self.results['Monthly Return'] = self.calendar_month_return()
         self.results['Yearly Return'] = self.calendar_year_return()
         self.results['Monthly Volatility'] = self.calendar_month_volatility()
-        self.results['Monthly Stats'] = get_monthly_stats(self.results['Monthly Return'])
+        self.results['Monthly Stats'] = self.monthly_stats()
 
         if not self._strategy_is_buy_and_hold():
             self._add_strategy_results()
@@ -289,6 +289,10 @@ class Backtest:
     def beta(self) -> float:
         _, beta, _ = self.alpha_beta_r()
         return beta
+
+    def monthly_stats(self) -> pd.DataFrame:
+        _df = self.results['Monthly Return'].copy()
+        return _df.groupby(_df.index.month).describe()
 
     # TODO: get r_f from yf directly instead of users' input
 

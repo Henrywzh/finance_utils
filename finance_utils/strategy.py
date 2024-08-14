@@ -6,10 +6,11 @@ from abc import ABC, abstractmethod
 
 class Strategy(ABC):
     def __init__(self):
-        self.benchmark: str = 'Adj Close'
+        self.price: str = 'Adj Close'
         self.df: pd.DataFrame = pd.DataFrame()
         self.results_df: pd.DataFrame = pd.DataFrame()
         self.cash: float = 10_000
+        self.start_date = None
 
         print('Feed data with columns containing "Adj Close" or "Close"')
         print('Then, call feed_data_and_run()')
@@ -51,6 +52,9 @@ class Strategy(ABC):
         self.df['Signal'] = self.calculate_signal()
 
         self.df['Position'] = self.get_position()
+        self.start_date = self.df['Position'][self.df['Position'] == 1].first_valid_index()
+        print(self.start_date)
+        self.df = self.df[self.df.index >= self.start_date]
 
         self.results_df['Price'] = self.get_price()  # asset price
         self.results_df['Value'] = self.get_strategy_value()  # strategy value according to the price
@@ -75,7 +79,7 @@ class Strategy(ABC):
         assumes df contains 'Adj Close' or 'Close'
         :return: The asset price series
         """
-        return self.df[self.benchmark]
+        return self.df[self.price]
 
     def get_return(self) -> pd.Series:
         """
@@ -136,8 +140,8 @@ class Strategy(ABC):
         """
         self.plot_graph()
         self.plot_show()
-
-        self.plot_cumulative_return()
+        #
+        # self.plot_cumulative_return()
 
     def plot_graph(self) -> None:
         """
@@ -151,13 +155,13 @@ class Strategy(ABC):
 
         # Plotting buy signals
         ax.plot(
-            self.df[self.df['Signal'].diff() >= 1].index, self.df[self.df['Signal'].diff() >= 1][self.benchmark],
+            self.df[self.df['Signal'].diff() >= 1].index, self.df[self.df['Signal'].diff() >= 1][self.price],
             '^', color='g', label='Buy Signal'
         )  # , markersize=10
 
         # Plotting sell signals
         ax.plot(
-            self.df[self.df['Signal'].diff() <= -1].index, self.df[self.df['Signal'].diff() <= -1][self.benchmark],
+            self.df[self.df['Signal'].diff() <= -1].index, self.df[self.df['Signal'].diff() <= -1][self.price],
             'v', color='r', label='Sell Signal'
         )
 
@@ -291,17 +295,17 @@ class MovingAverageCrossOver(Strategy):
         """
         # -- format check --
         if 'Adj Close' in df.columns:
-            self.benchmark = 'Adj Close'
+            self.price = 'Adj Close'
         elif 'Close' in df.columns:
-            self.benchmark = 'Close'
+            self.price = 'Close'
             print('Adj Close not found. Using Close price instead of Adj Close.')
         else:
             raise ValueError('Please ensure that the columns contain Adj Close or Close.')
 
         # -- feed data --
         df = df.copy()
-        df['Fast'] = df[f'{self.benchmark}'].rolling(self.fast).mean()
-        df['Slow'] = df[f'{self.benchmark}'].rolling(self.slow).mean()
+        df['Fast'] = df[f'{self.price}'].rolling(self.fast).mean()
+        df['Slow'] = df[f'{self.price}'].rolling(self.slow).mean()
 
         return df
 
@@ -320,7 +324,7 @@ class MovingAverageCrossOver(Strategy):
 class EmaCrossover(MovingAverageCrossOver):
     def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        df['Fast'] = df[f'{self.benchmark}'].ewm(span=self.fast, adjust=False).mean()
-        df['Slow'] = df[f'{self.benchmark}'].ewm(span=self.slow, adjust=False).mean()
+        df['Fast'] = df[f'{self.price}'].ewm(span=self.fast, adjust=False).mean()
+        df['Slow'] = df[f'{self.price}'].ewm(span=self.slow, adjust=False).mean()
 
         return df
