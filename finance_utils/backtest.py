@@ -68,7 +68,7 @@ class Backtest:
         self.results['Sortino Ratio'] = self.sortino_ratio()
 
         self.results['VaR 99'] = self.value_at_risk(self.df['Return'], alpha=99)
-        self.results['VaR 99 (Year)'] = self.conditional_VaR(self.calendar_year_return(), alpha=99)
+        self.results['VaR 99 (Year)'] = self.value_at_risk(self.calendar_year_return(), alpha=99)
         self.results['CVaR 99'] = self.conditional_VaR(self.df['Return'], alpha=99)
         self.results['CVaR 99 (Year)'] = self.conditional_VaR(self.calendar_year_return(), alpha=99)
 
@@ -159,11 +159,11 @@ class Backtest:
         # -- plotting --
         fig, ax = plt.subplots(figsize=(10, 6))
 
+        bars_buy_hold = ax.bar(_yearly_return.index.year, _buy_hold_yearly_return, label='Buy & Hold', alpha=0.5)
+        ax.bar_label(bars_buy_hold)
 
         bars_strategy = ax.bar(_yearly_return.index.year, _yearly_return, label='Strategy')
         ax.bar_label(bars_strategy)
-        bars_buy_hold = ax.bar(_yearly_return.index.year, _buy_hold_yearly_return, label='Buy & Hold')
-        ax.bar_label(bars_buy_hold)
 
         ax.set(xlabel='Year', ylabel='Return', title='Yearly Return (%)')
         ax.legend(loc='best', ncols=2)
@@ -177,10 +177,7 @@ class Backtest:
 
     def _print_results(self) -> None:
         for key in self.results:
-            if key == 'Monthly Stats':
-                print(f'{key}: \n{self.results[key]}')
-                continue
-            elif isinstance(self.results[key], pd.Series) or isinstance(self.results[key], pd.DataFrame):
+            if isinstance(self.results[key], pd.Series) or isinstance(self.results[key], pd.DataFrame):
                 continue
 
             print(f'{key}: {self.results[key]}')
@@ -273,12 +270,12 @@ class Backtest:
         returns = self.df['Return'].dropna(axis=0)
         benchmark_returns = self.df['Price'].pct_change().dropna(axis=0)
         if self.benchmark == 'Price':
-            beta, alpha, r_2, _, _ = stats.linregress(returns, benchmark_returns)
+            beta, alpha, r_2, _, _ = stats.linregress(benchmark_returns, returns)
         else:
 
             benchmark_df = yf.download(self.benchmark, start=self.start_date, end=self.end_date)
             benchmark_returns = benchmark_df['Adj Close'].pct_change().dropna(axis=0)
-            beta, alpha, r_2, _, _ = stats.linregress(returns, benchmark_returns)
+            beta, alpha, r_2, _, _ = stats.linregress(benchmark_returns, returns)
 
         return alpha, beta, r_2
 
