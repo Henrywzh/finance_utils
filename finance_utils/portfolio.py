@@ -42,10 +42,10 @@ class Portfolio:
         if cash < 10_000:
             raise ValueError("Please enter cash amount >= 10_000")
 
-        if start_date > end_date:
+        if start_date and end_date and (start_date > end_date):
             raise ValueError("start_date should be less than end_date")
 
-        if len(df.columns) != len(default_weights):
+        if default_weights and len(data.columns) != len(default_weights):
             raise ValueError("number of stocks != length of default_weights")
 
         # -- initialisation --
@@ -60,13 +60,11 @@ class Portfolio:
         self.benchmark = '^GSPC' if benchmark is None else benchmark
 
         # set date
-        self.start_date = start_date if start_date else data.index[0]
-        self.end_date = end_date if end_date else data.index[-1]
+        self.start_date = data.index[0] if start_date is None else pd.to_datetime(start_date)
+        self.end_date = pd.to_datetime(start_date) if end_date else data.index[-1]
 
-        self.benchmark_price = self._get_benchmark()
+        self.benchmark_prices = self._get_benchmark()
         self.weights = default_weights if default_weights else [1 / len(self.tickers) for t in self.tickers]
-        self.start_date = start_date if start_date else '2015-01-01'
-        self.end_date = datetime.datetime.now() if not end_date else end_date
 
     # -- run --
     def run(self) -> pd.DataFrame:
@@ -94,7 +92,8 @@ class Portfolio:
 
     # -- quantitative analysis --
     def get_value(self, i: int | str) -> float:
-        stocks_val = self.shares * self.prices.iloc[i] if isinstance(i, int) else self.shares * self.prices.loc[i]
+        stocks_val = self.shares.iloc[i] * self.prices.iloc[i] if isinstance(i, int) \
+            else self.shares.loc[i] * self.prices.loc[i]
         total_val = self.cash + stocks_val.sum()
         return total_val
 
@@ -126,13 +125,20 @@ class Portfolio:
         self.prices = self.prices.merge(_df, how='left')
         # TODO: Debug
 
-    def _get_benchmark(self) -> pd.DataFrame:
-        _df = yf.download(self.benchmark, self.start_date, self.end_date)
+    def _get_benchmark(self) -> pd.Series:
+        _df: pd.Series = yf.download(self.benchmark, self.start_date, self.end_date)['Adj Close']
+        _df.name = self.benchmark
+
         # TODO: What if no stock data for the beginning?
         return _df
 
+    def _compute_shares(self):
+        # TODO: compute shares according to weights and current capital
+        pass
+
     def _compute_weights(self, i: int | str) -> list:
-        curr_vals = self.shares * self.prices.iloc[i] if isinstance(i, int) else self.shares * self.prices.loc[i]
+        curr_vals = self.shares.iloc[i] * self.prices.iloc[i] if isinstance(i, int) \
+            else self.shares.loc[i] * self.prices.loc[i]
         return list(curr_vals / self.get_value(i))
 
     def _check_weights(self) -> bool:
