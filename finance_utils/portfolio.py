@@ -13,13 +13,6 @@ class Portfolio:
 - founding time
 - class BackTest -> to give some results related to the portfolio
 
-class BackTest:
-- given strategy/asset/portfolio returns
-- benchmark returns
-- value of your wealth
-- xxx ratio, volatility...
-- alpha, beta...
-
 class Strategy: (abstract class?)
 - given hlo or other information
 - build a strategy with some hyperparameters
@@ -56,8 +49,11 @@ class Portfolio:
             raise ValueError("number of stocks != length of default_weights")
 
         # -- initialisation --
-        self.df = data
+        self.shares = pd.DataFrame()
+        self.prices = data
         self.cash = cash
+        self.cash_df = pd.DataFrame()
+
         self.tickers = data.columns.tolist()
 
         # set benchmark
@@ -67,26 +63,45 @@ class Portfolio:
         self.start_date = start_date if start_date else data.index[0]
         self.end_date = end_date if end_date else data.index[-1]
 
-
-        self.benchmark_price = self._download_benchmark()
-        self.weights = default_weights if default_weights else [1 / len(self.tickers)] * len(self.tickers)
+        self.benchmark_price = self._get_benchmark()
+        self.weights = default_weights if default_weights else [1 / len(self.tickers) for t in self.tickers]
         self.start_date = start_date if start_date else '2015-01-01'
         self.end_date = datetime.datetime.now() if not end_date else end_date
 
+    # -- run --
+    def run(self) -> pd.DataFrame:
+        # return: the daily value of the portfolio from start to end
+        # TODO:
+        pass
+
     # -- set up, changes to portfolio settings --
-    def set_start_date(self, start_date: str):
+    def set_start_date(self, start_date: str) -> None:
         self.start_date = start_date
 
-    def set_end_date(self, end_date: str):
+    def set_end_date(self, end_date: str) -> None:
         self.end_date = end_date
 
-    def add(self, item: str | list[str]):
-        self.tickers += item
+    def add_stock(self, item: str | list[str]) -> None:
+        if isinstance(item, str):
+            self.tickers += [item]
+        else:
+            self.tickers += item
+
+        self._reset_weights()
         # TODO:
 
         # need to check column format
 
     # -- quantitative analysis --
+    def get_value(self, i: int | str) -> float:
+        stocks_val = self.shares * self.prices.iloc[i] if isinstance(i, int) else self.shares * self.prices.loc[i]
+        total_val = self.cash + stocks_val.sum()
+        return total_val
+
+    def get_portfolio_values(self) -> pd.DataFrame:
+        # TODO:
+        pass
+
     def get_portfolio_returns(self):
         # pass the portfolio returns as a pd.Series
         # TODO:
@@ -95,7 +110,6 @@ class Portfolio:
     def get_portfolio_risk(self):
         # TODO:
         pass
-
 
     # -- portfolio management --
     def rebalance_portfolio(self):
@@ -107,13 +121,25 @@ class Portfolio:
         pass
 
     # -- private methods --
-    def _download_benchmark(self):
+    def _download(self, ticker: str | list[str]) -> None:
+        _df = yf.download(ticker, self.start_date, self.end_date)
+        self.prices = self.prices.merge(_df, how='left')
+        # TODO: Debug
+
+    def _get_benchmark(self) -> pd.DataFrame:
         _df = yf.download(self.benchmark, self.start_date, self.end_date)
+        # TODO: What if no stock data for the beginning?
         return _df
 
+    def _compute_weights(self, i: int | str) -> list:
+        curr_vals = self.shares * self.prices.iloc[i] if isinstance(i, int) else self.shares * self.prices.loc[i]
+        return list(curr_vals / self.get_value(i))
+
     def _check_weights(self) -> bool:
-        # TODO:
         return sum(self.weights) == 1
+
+    def _reset_weights(self) -> None:
+        self.weights = [1 / len(self.tickers) for t in self.tickers]
 
 
 if __name__ == '__main__':
