@@ -1,7 +1,7 @@
+import numpy as np
 import pandas as pd
 import yfinance as yf
 import datetime
-
 
 """
 class Portfolio:
@@ -53,6 +53,7 @@ class Portfolio:
         self.prices = data
         self.cash = cash
         self.cash_df = pd.DataFrame()
+        self.portfolio_values = pd.DataFrame()
 
         self.tickers = data.columns.tolist()
 
@@ -68,26 +69,53 @@ class Portfolio:
 
     # -- run --
     def run(self) -> pd.DataFrame:
-        # return: the daily value of the portfolio from start to end
-        # TODO:
-        pass
+        self.rebalance_portfolio()
+
+        return self.portfolio_values
 
     # -- set up, changes to portfolio settings --
     def set_start_date(self, start_date: str) -> None:
-        self.start_date = start_date
+        _start_date = pd.to_datetime(start_date)
+        if _start_date >= self.end_date:
+            raise ValueError("start_date should be less than end_date")
+
+        self.start_date = _start_date
 
     def set_end_date(self, end_date: str) -> None:
-        self.end_date = end_date
+        _end_date = pd.to_datetime(end_date)
+        if _end_date <= self.start_date:
+            raise ValueError("end_date should be greater than start_date")
 
-    def add_stock(self, item: str | list[str]) -> None:
+        self.end_date = _end_date
+
+    def set_dates(self, start_date: str, end_date: str) -> None:
+        _start_date = pd.to_datetime(start_date)
+        _end_date = pd.to_datetime(end_date)
+
+        if _start_date > _end_date:
+            raise ValueError("start_date should be less than end_date")
+
+        self.start_date = _start_date
+        self.end_date = _end_date
+
+    def add_stock(self, item: str | list[str] | pd.Series | pd.DataFrame) -> None:
         if isinstance(item, str):
             self.tickers += [item]
-        else:
+            self._download(item)
+        elif isinstance(item, list):
             self.tickers += item
+            self._download(item)
+        elif isinstance(item, pd.Series):
+            self.tickers += [item.name]
+            self.prices = self.prices.join(item)
+        elif isinstance(item, pd.DataFrame):
+            self.tickers += list(item.columns)
+            self.prices = self.prices.join(item)
+        else:
+            raise TypeError("item should be the following type: str, list, pd.Series, pd.DataFrame")
 
         self._reset_weights()
         # TODO:
-
         # need to check column format
 
     # -- quantitative analysis --
@@ -111,9 +139,42 @@ class Portfolio:
         pass
 
     # -- portfolio management --
-    def rebalance_portfolio(self):
-        # TODO:
-        pass
+    def rebalance_portfolio(self) -> None:
+        # return: the daily value of the portfolio from start to end
+        stock_data = self.prices
+        stock_data = stock_data.reindex(columns=self.tickers)  # ! Key to mantain structure
+
+        shares_df = pd.DataFrame(index=stock_data.index, columns=self.tickers)
+        capitals = []
+        cashes = []
+        ind = 0
+
+        for i in stock_data.index:
+            if ind == 0:
+                # initial set up
+                capitals.append(self.cash)
+                for s, w in zip(self.tickers, self.weights):
+                    shares_df.loc[i, s] = np.floor(capitals[0] * np.array(w) / stock_data[s].loc[i])
+
+                cashes.append(self.cash - (shares_df.loc[i] * stock_data.loc[i]).sum())
+                ind += 1
+                continue
+
+            capitals.append((stock_data.iloc[ind] * shares_df.iloc[ind - 1]).sum() + cashes[ind - 1])
+
+            if ind % 30 == 0:
+                curr_shares = np.floor(capitals[ind] * np.array(self.weights) / stock_data.loc[i])
+                shares_df.loc[i] = curr_shares
+            else:
+                shares_df.loc[i] = shares_df.iloc[ind - 1]
+
+            cashes.append(capitals[ind] - (shares_df.loc[i] * stock_data.loc[i]).sum())
+            ind += 1
+
+        portfolio_values = pd.DataFrame(capitals, columns=['Value'], index=self.prices.index)
+
+        self.portfolio_values = portfolio_values
+        self.cash_df = pd.DataFrame(data=cashes, columns=['Cash'], index=self.prices.index)
 
     def optimise_portfolio(self):
         # TODO:
@@ -122,7 +183,7 @@ class Portfolio:
     # -- private methods --
     def _download(self, ticker: str | list[str]) -> None:
         _df = yf.download(ticker, self.start_date, self.end_date)
-        self.prices = self.prices.merge(_df, how='left')
+        self.prices = self.prices.join(_df)
         # TODO: Debug
 
     def _get_benchmark(self) -> pd.Series:
@@ -132,7 +193,8 @@ class Portfolio:
         # TODO: What if no stock data for the beginning?
         return _df
 
-    def _compute_shares(self):
+    def _compute_shares(self, i):
+        np.floor(capitals[ind] * np.array(self.weights) / stock_data.loc[i])
         # TODO: compute shares according to weights and current capital
         pass
 
@@ -146,11 +208,3 @@ class Portfolio:
 
     def _reset_weights(self) -> None:
         self.weights = [1 / len(self.tickers) for t in self.tickers]
-
-
-if __name__ == '__main__':
-    df = yf.download(tickers=['AAPL', 'MSFT', 'AMZN', 'SPY'], start='2020-01-01')
-    initial_capital = 1_000_000
-    p = Portfolio(df['Adj Close'], initial_capital)
-    print(df)
-
