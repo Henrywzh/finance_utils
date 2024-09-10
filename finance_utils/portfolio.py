@@ -69,8 +69,8 @@ class Portfolio:
         self.weights = default_weights if default_weights else [1 / len(self.tickers) for t in self.tickers]
 
     # -- run --
-    def run(self) -> pd.DataFrame:
-        self.rebalance_portfolio()
+    def run(self, period: int = 20) -> pd.DataFrame:
+        self.rebalance_portfolio(period=period)
 
         return self.portfolio_values
 
@@ -150,20 +150,29 @@ class Portfolio:
     # -- visualisation --
     def plot(self):
         self.plot_cum_returns()
+        self.plot_cum_values()
         self.plot_shares()
         self.plot_weights()
 
-    def plot_cum_returns(self):
+    def plot_cum_returns(self) -> None:
         (self.portfolio_values / self.portfolio_values.iloc[0]).plot(figsize=(10, 6))
+        plt.title('Cumulative Returns')
         plt.show()
 
-    def plot_shares(self):
+    def plot_cum_values(self) -> None:
+        (self.shares * self.prices).plot(figsize=(10, 6))
+        plt.title('Cumulative Values')
+        plt.show()
+
+    def plot_shares(self) -> None:
         self.shares.plot(figsize=(10, 6))
+        plt.title('Shares')
         plt.show()
 
-    def plot_weights(self):
+    def plot_weights(self) -> None:
         weights: pd.DataFrame = (self.prices * self.shares) / self.portfolio_values.values
         weights.plot(figsize=(10, 6))
+        plt.title('Weights')
         plt.show()
 
     # -- portfolio management --
