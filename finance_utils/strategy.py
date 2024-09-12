@@ -3,6 +3,15 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from abc import ABC, abstractmethod
 
+"""
+class Strategy: (abstract class?)
+- given hlo or other information
+- build a strategy with some hyperparameters
+- calculates returns
+- given class BackTest
+- optimization of hyperparameters by maximizing one of the indicator from BackTest
+"""
+
 
 class Strategy(ABC):
     def __init__(self):

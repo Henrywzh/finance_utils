@@ -23,9 +23,12 @@ class Backtest:
         """
         # TODO: Sliding Backtest Windows
 
+        # TODO: data input -> benchmark and strategy
+        # TODO: Consider transaction cost
+
         # -- format check --
-        if 'Value' not in data.columns or 'Return' not in data.columns or 'Price' not in data.columns:
-            raise ValueError('data columns should contain: Value, Return, Price')
+        if 'Value' not in data.columns or 'Price' not in data.columns:
+            raise ValueError('data columns should contain: Value, Price')
 
         if start_date is None or start_date < data.index[0]:
             start_date = data.index[0]
@@ -40,6 +43,10 @@ class Backtest:
         self.r_f = 0 if r_f is None else r_f
         self.benchmark = 'Price' if benchmark is None else benchmark
         self.df = data  # assumes results initially contains the returns & Value
+
+        if 'Return' not in self.df.columns:
+            self.df['Return'] = self.df['Value'].pct_change()
+
         self.start_date = start_date
         self.end_date = end_date
         self.results = dict()  # contains all the single result values, eg max drawdown...
@@ -170,10 +177,23 @@ class Backtest:
 
         plt.show()
 
-
-
     def plot_monthly_volatility(self) -> None:
         plot_heatmap(self.results['Monthly Volatility'])
+
+    def plot_rolling(self) -> None:
+        self.plot_rolling_VaR()
+        self.plot_rolling_beta()
+        self.plot_rolling_alpha()
+
+    def plot_rolling_VaR(self) -> None:
+        # TODO: plot both VaR and CVaR
+        pass
+
+    def plot_rolling_beta(self) -> None:
+        pass
+
+    def plot_rolling_alpha(self) -> None:
+        pass
 
     def _print_results(self) -> None:
         for key in self.results:
@@ -348,9 +368,6 @@ class Backtest:
 
     # TODO: Add the below indicators
     """
-    peak, drawdown, avg drawdown, max drawdown, **
-    calmar ratio, sterling ratio, ***
-    annualised returns, ***
     exposure time, max/avg drawdown duration, 
 
     win rate,

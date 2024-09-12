@@ -13,13 +13,6 @@ class Portfolio:
 - value of your wealth
 - founding time
 - class BackTest -> to give some results related to the portfolio
-
-class Strategy: (abstract class?)
-- given hlo or other information
-- build a strategy with some hyperparameters
-- calculates returns
-- given class BackTest
-- optimization of hyperparameters by maximizing one of the indicator from BackTest
 """
 
 
@@ -36,7 +29,7 @@ class Portfolio:
         """
         :param data: daily stocks prices, columns: stock names
         :param cash: initial capital
-        "param stocks: list of stocks in the portfolio
+        :param benchmark: benchmark for the portfolio, eg s&p500
         :param default_weights: weights of each stock in the portfolio
         """
         # -- format check ---
@@ -70,6 +63,7 @@ class Portfolio:
 
     # -- run --
     def run(self, period: int = 20) -> pd.DataFrame:
+        # TODO: Consider the case when we need to change weights
         self.rebalance_portfolio(period=period)
 
         return self.portfolio_values
@@ -155,13 +149,16 @@ class Portfolio:
         self.plot_weights()
 
     def plot_cum_returns(self) -> None:
-        (self.portfolio_values / self.portfolio_values.iloc[0]).plot(figsize=(10, 6))
-        plt.title('Cumulative Returns')
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.portfolio_values / self.portfolio_values.iloc[0] * 100, label='Portfolio')
+        plt.plot(self.benchmark_prices / self.benchmark_prices.iloc[0] * 100, label=f'Benchmark: {self.benchmark}')
+        plt.title("Portfolio's Cumulative Return (%)")
+        plt.legend()
         plt.show()
 
     def plot_cum_values(self) -> None:
         (self.shares * self.prices).plot(figsize=(10, 6))
-        plt.title('Cumulative Values')
+        plt.title("Portfolio's Cumulative Values ($)")
         plt.show()
 
     def plot_shares(self) -> None:
@@ -177,7 +174,7 @@ class Portfolio:
 
     # -- portfolio management --
 
-    def rebalance_portfolio(self, period: int = 20) -> None:
+    def rebalance_portfolio(self, rebalance: bool = True, period: int = 20) -> None:
         # return: the daily value of the portfolio from start to end
         for i, d in enumerate(self.prices.index):
             if i == 0:
@@ -190,7 +187,7 @@ class Portfolio:
 
             self.portfolio_values[i] = self._compute_values(i)
 
-            if i % period == 0:
+            if rebalance and i % period == 0:
                 self.shares.loc[d] = self._compute_shares(i)
             else:
                 self.shares.loc[d] = self.shares.iloc[i - 1]
