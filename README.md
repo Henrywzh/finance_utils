@@ -21,7 +21,7 @@ Example:
 ```
 df = yf.download(tickers=['AAPL', 'MSFT', 'AMZN', 'NVDA'], start='2015-01-01', end='2024-09-11')
 initial_capital = 1_000_000
-my_portfolio = Portfolio(df['Adj Close'].drop(columns=['SPY']), initial_capital, benchmark='SPY')
+my_portfolio = Portfolio(df['Adj Close'], initial_capital, benchmark='SPY')
 my_portfolio.run()
 my_portfolio.plot()
 ```
