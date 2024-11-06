@@ -14,34 +14,29 @@ class Strategy: (abstract class?)
 
 
 class Strategy(ABC):
-    def __init__(self):
+    def __init__(self, _data: pd.DataFrame):
         self.price: str = 'Adj Close'
-        self.df: pd.DataFrame = pd.DataFrame()
+        self.df: pd.DataFrame = _data
         self.results_df: pd.DataFrame = pd.DataFrame()
         self.cash: float = 10_000
         self.start_date = None
 
-        print('Feed data with columns containing "Adj Close" or "Close"')
-        print('Then, call feed_data_and_run()')
+        self.run(self.df)
 
     @abstractmethod
     def __str__(self):
         pass
 
     @abstractmethod
-    def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        need to perform format check with the df
-        :return: a pandas dataframe containing necessary data, eg Adj Close, Signal
-        """
-        pass
-
-    @abstractmethod
-    def calculate_signal(self) -> list:
+    def signals(self) -> list:
         """
         calculate signals
         :return:
         """
+        pass
+
+    @abstractmethod
+    def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
         pass
 
     # ---- not in use right now ----
@@ -56,9 +51,10 @@ class Strategy(ABC):
                 raise ValueError(f'{col_name} not in self.df')
 
     # ---- in use ----
-    def feed_data_and_run(self, df: pd.DataFrame) -> pd.DataFrame:
-        self.df = self.feed_data(df)
-        self.df['Signal'] = self.calculate_signal()
+    def run(self, _data: pd.DataFrame) -> pd.DataFrame:
+        self.df = self.feed_data(_data)
+
+        self.df['Signal'] = self.signals()
 
         self.df['Position'] = self.get_position()
         self.start_date = self.df['Position'][self.df['Position'] == 1].first_valid_index()
@@ -79,7 +75,7 @@ class Strategy(ABC):
         return self.results_df.copy()
 
     # ---- connect wth backtest ----
-    def pass_df_to_backtest(self) -> pd.DataFrame:
+    def pass_to_backtest(self) -> pd.DataFrame:
         return self.results_df[['Value', 'Return', 'Price']]
 
     def get_price(self) -> pd.Series:
@@ -98,7 +94,6 @@ class Strategy(ABC):
         return self.get_price().pct_change()
 
     def get_strategy_value(self) -> pd.Series:
-        # TODO: Actually I'm not sure, only use this function when you buy sell hold once
         """
         buy and hold value according to the asset value
         :return:
@@ -189,94 +184,20 @@ class Strategy(ABC):
         plt.legend()
         plt.show()
 
-
-def fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
-    # _df contains the Close of a stock
-    if fast < 0: raise ValueError('Fast must be greater than 0')
-    if slow < 0: raise ValueError('Slow must be greater than 0')
-    if fast > slow:
-        temp = fast
-        fast = slow
-        slow = temp
-    if ticker_name is None:
-        ticker_name = 'Close'
-    _df = pd.DataFrame(df_prev[ticker_name])
-    _df.dropna(inplace=True)
-
-    _df[f'MA{fast}'] = _df[ticker_name].rolling(fast).mean()
-    _df[f'MA{slow}'] = _df[ticker_name].rolling(slow).mean()
-
-    _df['Signal'] = np.where(
-        _df[f'MA{slow}'].isna(),
-        0,
-        np.where(_df[f'MA{slow}'] < _df[f'MA{fast}'], 1, -1)
-    )  # fill na with 0, if fast MA > slow MA, signal = 1, else -1
-    _df['Position'] = _df['Signal'].shift(1)
-    _df['Strategy Return'] = _df[ticker_name].pct_change() * _df['Position']
-    _df['Cumulative Return'] = (1 + _df['Strategy Return']).cumprod()
-
-    # return a dataframe with columns: Price, Strategy Return, Cumulative Return
-    # it also contains other stuff, but less important
-    return _df
-
-
-# need to redo the ema functions
-def ema_fast_slow(df_prev: pd.DataFrame, fast: int, slow: int, ticker_name: str = None) -> pd.DataFrame:
-    if fast < 0: raise ValueError('Fast must be greater than 0')
-    if slow < 0: raise ValueError('Slow must be greater than 0')
-    if fast > slow:
-        temp = fast
-        fast = slow
-        slow = temp
-    if ticker_name is None:
-        ticker_name = 'Close'
-    _df = pd.DataFrame(df_prev[ticker_name])
-    _df.dropna(inplace=True)
-
-    _df[f'EMA{fast}'] = _df[ticker_name].ewm(span=fast, adjust=False).mean()
-    _df[f'EMA{slow}'] = _df[ticker_name].ewm(span=slow, adjust=False).mean()
-
-    _df['Signal'] = np.where(
-        _df[f'EMA{slow}'].isna(),
-        0,
-        np.where(_df[f'EMA{slow}'] < _df[f'EMA{fast}'], 1, -1)
-    )  # fill na with 0, if fast MA > slow MA, signal = 1, else -1
-    _df['Position'] = _df['Signal'].shift(1)
-    _df['Strategy Return'] = _df[ticker_name].pct_change() * _df['Position']
-    _df['Cumulative Return'] = np.cumprod(1 + _df['Strategy Return']) - 1
-
-    return _df
-
-
-def buy_and_hold(df_prev: pd.DataFrame, ticker_name: str = None) -> pd.DataFrame:
-    if ticker_name is None:
-        ticker_name = 'Close'
-    _df = pd.DataFrame(df_prev[ticker_name])
-    _df.dropna(inplace=True)
-
-    _df['Strategy Return'] = _df[ticker_name].pct_change()
-    _df['Cumulative Return'] = (1 + _df['Strategy Return']).cumprod()
-
-    return _df
-
-
 class MovingAverageCrossOver(Strategy):
     def __str__(self):
         return 'moving_average_crossover'
 
-    def __init__(self, fast: int = 10, slow: int = 50):
-        super().__init__()
+    def __init__(self, _data: pd.DataFrame, fast: int = 10, slow: int = 50):
+        super().__init__(_data)
 
         # -- format check --
-        if fast > slow:
-            raise ValueError('Fast should be smaller than Slow')
-        if fast < 1:
-            raise ValueError('Ensure that Fast > 0')
+        assert 0 < fast < slow
 
         self.fast: int = fast
         self.slow: int = slow
 
-    def calculate_signal(self) -> list:
+    def signals(self) -> list:
         # fill na with 0, if fast MA > slow MA, signal = 1, else -1
         signals = []
         be4_first_trend: bool = True
@@ -297,11 +218,6 @@ class MovingAverageCrossOver(Strategy):
         return signals
 
     def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Create necessary data to calculate signals
-        """
-        :param df: df containing Adj Close or Close price
-        :return:
-        """
         # -- format check --
         if 'Adj Close' in df.columns:
             self.price = 'Adj Close'
@@ -337,3 +253,70 @@ class EmaCrossover(MovingAverageCrossOver):
         df['Slow'] = df[f'{self.price}'].ewm(span=self.slow, adjust=False).mean()
 
         return df
+
+class MeanReversion(Strategy):
+    def __init__(
+            self,
+            _data: pd.DataFrame,
+            _ma_length: int = 50,
+            _days: int = 200,
+            _up: float = 1,
+            _down: float = 1
+    ):
+        super().__init__(_data)
+
+        assert _days > 0
+        assert _ma_length > 0
+        assert _up > 0
+        assert _down > 0
+
+        self.days: int = _days
+        self.ma_length: int = _ma_length
+        self.up: float = _up
+        self.down: float = _down
+
+    def feed_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+
+        df['ma'] = self.get_price().rolling(self.ma_length).mean()
+        df['risk'] = self.get_price().rolling(self.days).std()
+        df['up_bound'] = self.get_price() + self.up * df['risk']
+        df['down_bound'] = self.get_price() - self.down * df['risk']
+
+        return df
+
+    def signals(self) -> list:
+        prices = self.df.get_price()
+        n = self.df.shape[0]
+        signals = [None] * n
+        for i in range(n):
+            if i == 0:
+                signals[i] = 0
+
+            elif self.df.low_bound.iloc[i] < prices.iloc[i] < self.df.up_bound.iloc[i]:
+                signals[i] = signals[i - 1]
+
+            elif prices.iloc[i] <= self.df.low_bound.iloc[i]:
+                if signals[i - 1] == 0:
+                    signals[i] = 1
+                elif signals[i - 1] == -1:
+                    signals[i] = 0
+                else:
+                    signals[i] = signals[i - 1]
+
+            else:
+                if signals[i - 1] == 0:
+                    signals[i] = -1
+                elif signals[i - 1] == 1:
+                    signals[i] = 0
+                else:
+                    signals[i] = signals[i - 1]
+
+        return signals
+
+    def optimise(self) -> None:
+        pass
+
+    def __str__(self):
+        return 'mean_reversion'
+

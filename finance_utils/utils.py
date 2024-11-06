@@ -5,37 +5,36 @@ import yfinance as yf
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-# ---- Functions ----
-"""
-functions for all of below:
+from finance_utils.types import Interval
 
-rolling: [downside beta, upside beta,
-          downside volatility, upside volatility, volatility skewness = upside var / downside var, 
-          returns skewness & kurtosis, -> just use skew() & kurt()
-          ]
-          
-          ---- IMPORTANT ----
-          For rolling data, just input the data with restricted range
-          
-single: rolling + 
-        [peak, drawdown, avg drawdown, max drawdown, calmar ratio, sterling ratio, 
-        annualised returns(geo + ari),
-        exposure time, max/avg drawdown duration, win rate, 
-        best/worst/avg trade %, max/avg trade duration,
-        profit factor, expectancy, SQN
-        ]
-        
-        
-REMINDER: 
-- downside volatility = np.sqrt(sum(max(r_i - r_f, 0)**2 / (n - 1))
-- sortino ratio = (r_i - r_f) / downside volatility
+"""
+Returns, volatility, drawdowns, and all other % values are calculated in decimal form
+
+Visualisations and results display % values in the % form
 """
 
-# ---- constants -----
-TRADING_DAYS: int = 252
-TRADING_MONTHS: int = 12
-TRADING_QUARTER: int = 4
+TRADING_DAYS: int = Interval.TRADING_DAYS.value
+TRADING_WEEKS: int = Interval.TRADING_WEEKS.value
+TRADING_MONTHS: int = Interval.TRADING_MONTHS.value
+TRADING_QUARTER: int = Interval.TRADING_QUARTER.value
+TRADING_YEARS: int = Interval.TRADING_YEAR.value
 
+def set_interval(interval: Interval):
+    if interval == Interval.TRADING_DAYS:
+        period = TRADING_DAYS
+    elif interval == Interval.TRADING_WEEKS:
+        period = TRADING_WEEKS
+    elif interval == Interval.TRADING_MONTHS:
+        period = TRADING_MONTHS
+    elif interval == Interval.TRADING_QUARTER:
+        period = TRADING_QUARTER
+    elif interval == Interval.TRADING_YEAR:
+        period = TRADING_YEARS
+    else:
+        print(interval)
+        raise ValueError('Does not support this kind of freq')
+
+    return period
 
 # assumes we have a dataframe of returns:
 def get_alpha_beta(returns: pd.Series, benchmark: str = 'SPY', benchmark_df=None) -> (float, float, float):
@@ -44,37 +43,42 @@ def get_alpha_beta(returns: pd.Series, benchmark: str = 'SPY', benchmark_df=None
 
     if benchmark_df is None:
         benchmark_p = yf.download(benchmark, start=start_date, end=end_date)
-        beta, alpha, r, _, _ = stats.linregress(returns, benchmark_p['Adj Close'].pct_change())
+        beta, alpha, r, _, _ = stats.linregress(benchmark_p['Adj Close'].pct_change(), returns)
     else:
-        beta, alpha, r, _, _ = stats.linregress(returns, benchmark_df.pct_change())
+        beta, alpha, r, _, _ = stats.linregress(benchmark_df.pct_change(), returns)
 
     return alpha, beta, r
 
+def compute_return(prices: pd.DataFrame) -> pd.DataFrame:
+    return prices.pct_change().fillna(0)
 
-def get_downside_returns(returns: pd.Series, threshold=0) -> pd.Series:
-    return returns[returns < threshold]
+def get_cumulative_return(returns: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
+    return np.cumprod(1 + returns) - 1
 
+def get_rolling_volatility(returns: pd.DataFrame | pd.Series, freq: Interval, windows: int = 30) -> pd.DataFrame | pd.Series:
+    temp_df = returns.dropna(axis=0)
+    period = set_interval(freq)
 
-def get_upside_returns(returns: pd.Series, threshold=0) -> pd.Series:
-    return returns[returns > threshold]
-
+    return temp_df.rolling(windows).std(ddof=1) * np.sqrt(period)
 
 # ---- return type: single value ----
-def get_volatility(returns: pd.Series) -> float:
+def get_volatility(returns: pd.Series, freq: Interval) -> float:
     temp_df = returns.dropna(axis=0)
+    period = set_interval(freq)
 
-    return temp_df.std(ddof=1) * np.sqrt(TRADING_DAYS)
+    return temp_df.std(ddof=1) * np.sqrt(period)
 
 
-def get_downside_volatility(returns: pd.Series, threshold: int | float = 0) -> float:
+def get_downside_volatility(returns: pd.Series, freq: Interval , threshold: int | float = 0) -> float:
     returns = returns.dropna(axis=0)
     n = returns.shape[0]
     downside_vol = np.sqrt(sum([min(r_i - threshold, 0) ** 2 for r_i in returns]) / (n - 1))
+    period = set_interval(freq)
 
-    return downside_vol * np.sqrt(TRADING_DAYS)
+    return downside_vol * np.sqrt(period)
 
 
-def get_annual_return(returns: pd.Series, freq: str = 'D', geo: bool = True) -> float:
+def get_annual_return(returns: pd.Series, freq: Interval, geo: bool = True) -> float:
     """
     :param geo:
     :param returns: the returns of the stock with a frequency freq
@@ -82,16 +86,7 @@ def get_annual_return(returns: pd.Series, freq: str = 'D', geo: bool = True) -> 
     :return: gives out the compound annual return
 
     """
-    freq = freq.upper()
-
-    if freq == 'D':
-        period = TRADING_DAYS
-    elif freq == 'M' or freq == 'ME':
-        period = TRADING_MONTHS
-    elif freq == 'Q':
-        period = TRADING_QUARTER
-    else:
-        raise ValueError('Does not support this kind of freq')
+    period = set_interval(freq)
 
     returns = returns.dropna(axis=0)
     time_count = returns.shape[0] - 1
@@ -119,9 +114,10 @@ def monthly_return(df: pd.Series) -> pd.Series:
     :param df: pd.Series, the price of the stock
     :return: pd.Series, the monthly return of the stock
     """
-    monthly = (df.resample('ME').last() - df.resample('ME').first()) / df.resample('ME').first()
+    first = df.resample('ME').first()
+    monthly = (df.resample('ME').last() - first) / first
 
-    return monthly.rename("Monthly Return")
+    return monthly.rename("Monthly Return").fillna(0)
 
 
 def get_monthly_stats(returns: pd.Series) -> pd.DataFrame:
@@ -214,7 +210,7 @@ def yearly_return(df: pd.Series) -> pd.Series:
         except:
             raise ValueError('Error with the sample freq')
 
-    return yearly.rename("Yearly Return")
+    return yearly.rename("Yearly Return").fillna(0)
 
 
 def plot_yearly_return(_yearly_return: pd.Series):
@@ -239,22 +235,23 @@ def plot_yearly_return(_yearly_return: pd.Series):
     plt.show()
 
 
-def get_sharpe_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
+def get_sharpe_ratio(returns: pd.Series, freq: Interval, r_f: float | int = 0) -> float:
     """
+    :param freq:
     :param returns: the asset returns
     :param r_f: risk-free rate
     """
-    std_r_p = get_volatility(returns)
-    annual_r_p = get_annual_return(returns) - r_f
+    std_r_p = get_volatility(returns, freq)
+    annual_r_p = get_annual_return(returns, freq) - r_f
 
     return annual_r_p / std_r_p
 
 
-def get_sortino_ratio(returns: pd.Series, r_f: float | int = 0) -> float:
+def get_sortino_ratio(returns: pd.Series, freq: Interval, r_f: float | int = 0) -> float:
     r_f = num_to_percent(r_f)
 
-    down_vol = get_downside_volatility(returns)
-    annual_r_p = get_annual_return(returns) - r_f
+    down_vol = get_downside_volatility(returns, freq)
+    annual_r_p = get_annual_return(returns, freq) - r_f
 
     return annual_r_p / down_vol
 

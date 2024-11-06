@@ -131,7 +131,7 @@ class Portfolio:
 
     def get_portfolio_returns(self) -> pd.DataFrame:
         # pass the portfolio returns
-        return self.portfolio_values.pct_change()
+        return self.portfolio_values.pct_change().fillna(0)
 
     def get_all_returns(self) -> pd.DataFrame:
         # return: daily returns of every stock in the portfolio
